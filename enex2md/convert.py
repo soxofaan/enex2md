@@ -6,11 +6,15 @@ import json
 import os
 import re
 import sys
+import logging
 
 from bs4 import BeautifulSoup
 from dateutil.parser import parse
 import html2text
 from lxml import etree
+
+
+_log = logging.getLogger(__name__)
 
 
 class Converter(object):
@@ -26,8 +30,7 @@ class Converter(object):
 
     def convert(self):
         if not os.path.exists(self.enex_file):
-            print(f'ERROR: The given input file "{self.enex_file}" does not exist.')
-            sys.exit(1)
+            raise IOError(f'The given input file "{self.enex_file}" does not exist.')
 
         tree = etree.parse(self.enex_file)
         notes = self._parse_notes(tree)
@@ -37,7 +40,7 @@ class Converter(object):
             output_folder = self._create_output_folder(self.enex_file)
             self._write_markdown(notes, output_folder)
         else:
-            print("WARNING! ATTACHMENTS ARE NOT PROCESSED WITH STDOUT OUTPUT!")
+            _log.warning("Attachments are not processed with stdout output")
             self._print_markdown(notes)
 
     def _parse_notes(self, xml_tree):
@@ -99,7 +102,7 @@ class Converter(object):
                     try:
                         attachment['filename'] = resource.xpath('resource-attributes/file-name')[0].text
                     except IndexError:
-                        print(f"Skipping attachment on note with title \"{keys['title']}\" because the name xml element is missing (resource/resource-attributes/file-name).")
+                        _log.warning(f"Skipping attachment on note with title \"{keys['title']}\" because the name xml element is missing (resource/resource-attributes/file-name).")
                         continue
 
                     # Base64 encoded data has new lines! Because why not!
@@ -110,7 +113,7 @@ class Converter(object):
 
             notes.append(keys)
 
-        print(f"Processed {note_count} note(s).")
+        _log.info(f"Processed {note_count} note(s).")
         return notes
 
     def _handle_codeblocks(self, text):
@@ -347,8 +350,7 @@ class Converter(object):
                         )
 
                     except Exception as e:
-                        print(f"Error processing attachment on note {filename_base}, attachment: {attachment['filename']}")
-                        print(str(e))
+                        _log.exception(f"Error processing attachment on note {filename_base}, attachment: {attachment['filename']}")
 
             """ Write the actual markdown note to disk. """
             with open(filename, 'w') as output_file:
