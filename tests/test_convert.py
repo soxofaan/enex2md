@@ -63,3 +63,48 @@ def test_frontmatter(tmp_path, monkeypatch):
           * chocolate
         """
     )
+
+
+def test_nested_lists(tmp_path, monkeypatch):
+    path = (enex_root / "notebook02.enex").absolute()
+    monkeypatch.chdir(tmp_path)
+    converter = Converter(enex_file=str(path), write_to_disk=True)
+    converter.convert()
+
+    generated = list(tmp_path.glob("**/*.md"))
+    assert len(generated) == 1
+    md = generated[0].read_text()
+    assert md == textwrap.dedent(
+        """\
+        # Nested lists
+
+        ## Note metadata
+
+        - Title: Nested lists
+        - Author: John Doe
+        - Created: 2023-07-09T20:46:28+00:00
+        - Updated: 2023-07-09T20:47:19+00:00
+
+        ## Note Content
+
+        Let's nest some lists:
+
+          * apple
+
+            * red
+            * green
+
+              * classic!
+            * yellow
+          * banana
+
+            * yellow
+
+              * brown-black: avoid!
+          * chocolate:
+
+            * white
+            * brown
+            * black
+        """
+    )

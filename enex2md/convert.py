@@ -244,7 +244,7 @@ class Converter(object):
             if line == '**' or line == ' **':
                 line = ''
 
-            if line.startswith('    '):
+            if line.startswith("    ") and not line.lstrip()[:1] == "*":
                 line = line[4:]
 
             if line == 'code-begin-code-begin-code-begin' or line == 'code-end-code-end-code-end':
