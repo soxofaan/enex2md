@@ -7,10 +7,10 @@ import os
 import re
 import sys
 import logging
-from typing import List, Dict
+from typing import List, Dict, Union
 
 from bs4 import BeautifulSoup
-from dateutil.parser import parse
+from dateutil.parser import parse as dateutil_parse
 import html2text
 from lxml import etree
 
@@ -19,12 +19,10 @@ _log = logging.getLogger(__name__)
 
 
 # Type annotation aliases
-Note = Dict[str, str]
+Note = Dict[str, Union[str, datetime.datetime]]
 
 
 class Converter(object):
-
-    date_format = '%h %d %Y %H:%M:%S'
 
     def __init__(self, enex_file, write_to_disk: bool, front_matter: bool = False):
         self.enex_file = enex_file
@@ -57,9 +55,9 @@ class Converter(object):
             note_count += 1
             keys = {}
             keys['title'] = note.xpath('title')[0].text
-            keys['created'] = f"{parse(note.xpath('created')[0].text).strftime(self.date_format)} GMT"
-            if note.xpath('updated'):
-                keys['updated'] = f"{parse(note.xpath('updated')[0].text).strftime(self.date_format)} GMT"
+            keys["created"] = dateutil_parse(note.xpath("created")[0].text)
+            if note.xpath("updated"):
+                keys["updated"] = dateutil_parse(note.xpath("updated")[0].text)
             if note.xpath('note-attributes/author'):
                 keys['author'] = note.xpath('note-attributes/author')[0].text
             if note.xpath('note-attributes/source-url'):
@@ -289,9 +287,13 @@ class Converter(object):
     def _format_note(self, note: Note) -> List[str]:
         metadata = {
             k: note[k]
-            for k in ["title", "created", "author", "updated", "source_url"]
+            for k in ["title", "author", "source_url"]
             if k in note and note[k]
         }
+        # TODO: option to format time in local time (instead of UTC)
+        metadata.update(
+            (k, note[k].isoformat()) for k in ["created", "updated"] if k in note and note[k]
+        )
         if note.get("tags"):
             metadata["tags"] = ", ".join(note["tags"])
 
