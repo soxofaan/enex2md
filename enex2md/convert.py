@@ -367,12 +367,12 @@ class Converter(object):
                             attachment['filename']
                         )
 
-                    except Exception as e:
+                    except Exception:
                         _log.exception(f"Error processing attachment on note {filename_base}, attachment: {attachment['filename']}")
 
             """ Write the actual markdown note to disk. """
             with open(filename, 'w') as output_file:
-                output_file.writelines("%s\n" % l for l in self._format_note(note))
+                output_file.writelines("%s\n" % ln for ln in self._format_note(note))
 
     def _fix_attachment_reference(self, note: str, md5_hash, mime_type, dir, name):
         content = note['content']
