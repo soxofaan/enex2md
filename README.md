@@ -3,7 +3,8 @@
 [![license](https://img.shields.io/github/license/soxofaan/enex2md.svg?style=flat)](https://github.com/soxofaan/enex2md/blob/master/LICENSE)
 [![Unit tests](https://github.com/soxofaan/enex2md/actions/workflows/unittest.yml/badge.svg?branch=main)](https://github.com/soxofaan/enex2md/actions/workflows/unittest.yml)
 
-Enex2md is a command-line utility to convert Evernote export files (`*.enex`) to [GitHub Flavored Markdown](https://github.github.com/gfm/). *Python 3.6+ only!*
+
+Enex2md is a Python based command-line utility to convert Evernote export files (`*.enex`) to [GitHub Flavored Markdown](https://github.github.com/gfm/).
 
 
 > **Note**
