@@ -7,6 +7,7 @@ import os
 import re
 import sys
 import logging
+from typing import List, Dict
 
 from bs4 import BeautifulSoup
 from dateutil.parser import parse
@@ -15,6 +16,10 @@ from lxml import etree
 
 
 _log = logging.getLogger(__name__)
+
+
+# Type annotation aliases
+Note = Dict[str, str]
 
 
 class Converter(object):
@@ -43,7 +48,7 @@ class Converter(object):
             _log.warning("Attachments are not processed with stdout output")
             self._print_markdown(notes)
 
-    def _parse_notes(self, xml_tree):
+    def _parse_notes(self, xml_tree) -> List[Note]:
         note_count = 0
         notes = []
         raw_notes = xml_tree.xpath('//note')
@@ -116,7 +121,7 @@ class Converter(object):
         _log.info(f"Processed {note_count} note(s).")
         return notes
 
-    def _handle_codeblocks(self, text):
+    def _handle_codeblocks(self, text: str) -> str:
         """ We would need to be able to recognise these (linebreaks added for brevity), and transform them to <pre> elements.
         <div style="box-sizing: border-box; padding: 8px; font-family: Monaco, Menlo, Consolas, &quot;Courier New&quot;, monospace; font-size: 12px; color: rgb(51, 51, 51); border-top-left-radius: 4px; border-top-right-radius: 4px; border-bottom-right-radius: 4px; border-bottom-left-radius: 4px; background-color: rgb(251, 250, 248); border: 1px solid rgba(0, 0, 0, 0.14902);-en-codeblock:true;">
         <div>import this</div>
@@ -151,7 +156,7 @@ class Converter(object):
 
         return str(soup)
 
-    def _handle_attachments(self, text):
+    def _handle_attachments(self, text: str) -> str:
         """ Note content may have attachments, such as images.
         <div><en-media hash="..." type="application/pdf" style="cursor:pointer;" /></div>
         <div><en-media hash="..." type="image/png" /><br /></div>
@@ -168,7 +173,7 @@ class Converter(object):
         text = ''.join(new_parts)
         return text
 
-    def _handle_tables(self, text):
+    def _handle_tables(self, text: str) -> str:
         """ Split by tables. Within the blocks containing tables, remove divs. """
 
         parts = re.split(r'(<table.*?</table>)', text)
@@ -184,7 +189,7 @@ class Converter(object):
 
         return text
 
-    def _handle_strongs_emphases(self, text):
+    def _handle_strongs_emphases(self, text: str) -> str:
         """ Make these work.
         <span style="font-weight: bold;">This text is bold.</span>
         <span style="font-style: italic;">This text is italic.</span>
@@ -219,19 +224,19 @@ class Converter(object):
 
         return text
 
-    def _handle_tasks(self, text):
+    def _handle_tasks(self, text: str) -> str:
         text = text.replace('<en-todo checked="true"/>', '<en-todo checked="true"/>[x] ')
         text = text.replace('<en-todo checked="false"/>', '<en-todo checked="false"/>[ ] ')
         text = text.replace('<en-todo checked="true" />', '<en-todo checked="true"/>[x] ')
         text = text.replace('<en-todo checked="false" />', '<en-todo checked="false"/>[ ] ')
         return text
 
-    def _handle_lists(self, text):
+    def _handle_lists(self, text: str) -> str:
         text = re.sub(r'<ul>', '<br /><ul>', text)
         text = re.sub(r'<ol>', '<br /><ol>', text)
         return text
 
-    def _post_processor_code_newlines(self, text):
+    def _post_processor_code_newlines(self, text: str) -> str:
         new_lines = []
         for line in text.split('\n'):
             # The html2text conversion generates whitespace from enex. Let's remove the redundant.
@@ -255,10 +260,10 @@ class Converter(object):
 
         return text
 
-    def _export_notes(self, notes):
+    def _export_notes(self, notes: List[Note]) -> None:
         sys.stdout.write(json.dumps(notes, indent=4, sort_keys=True))
 
-    def _make_safe_name(self, input_string=None, counter=0):
+    def _make_safe_name(self, input_string: str, counter=0) -> str:
         better = input_string.replace(' ', '_')
         better = "".join([c for c in better if re.match(r'\w', c)])
         # For handling duplicates: If counter > 0, append to file/folder name.
@@ -266,7 +271,7 @@ class Converter(object):
             better = f"{better}_{counter}"
         return better
 
-    def _create_output_folder(self, input_name):
+    def _create_output_folder(self, input_name: str) -> str:
         ''' See that the folder does not exist. If it doesn't, create it.
             Name is created from a timestamp: 20190202_172208
         '''
@@ -280,7 +285,7 @@ class Converter(object):
 
         return folder_name
 
-    def _format_note(self, note):
+    def _format_note(self, note: Note) -> List[str]:
         note_content = []
         note_content.append(f"# {note['title']}")
         note_content.append("")
@@ -301,14 +306,14 @@ class Converter(object):
 
         return note_content
 
-    def _print_markdown(self, notes):
+    def _print_markdown(self, notes: List[Note]) -> None:
         for note in notes:
             print("--- New Note ---")
             for line in self._format_note(note):
                 print(line)
             print("--- End Note ---")
 
-    def _write_markdown(self, notes, output_folder):
+    def _write_markdown(self, notes: List[Note], output_folder: str) -> None:
         for note in notes:
             # Check, that the file name does not exist already. If it does, generate a new one.
             filename_base = note['markdown_filename_base']
@@ -356,7 +361,7 @@ class Converter(object):
             with open(filename, 'w') as output_file:
                 output_file.writelines("%s\n" % l for l in self._format_note(note))
 
-    def _fix_attachment_reference(self, note, md5_hash, mime_type, dir, name):
+    def _fix_attachment_reference(self, note: str, md5_hash, mime_type, dir, name):
         content = note['content']
         if mime_type.startswith('image/'):
             content = content.replace(f"ATCHMT:{md5_hash}", f"\n![{name}]({dir}/{name})")
