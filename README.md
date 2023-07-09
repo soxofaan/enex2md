@@ -40,7 +40,7 @@ See [Changelog](https://github.com/soxofaan/enex2md/blob/master/CHANGELOG.md) fo
 Clone the [repository](https://github.com/soxofaan/enex2md) to your local machine, and install the project in your virtual env:
 
 ```shell
-pip install -e .
+pip install -e .[dev]
 ```
 
 ## Usage

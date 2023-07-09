@@ -14,11 +14,6 @@ EMAIL = 'janikarh@gmail.com'
 AUTHOR = 'Jani Karhunen'
 REQUIRES_PYTHON = '>=3.6.0'
 
-REQUIRED = ['Click>=7.0',
-            'lxml>=4.4.1',
-            'python-dateutil>=2.7.0',
-            'html2text>=2019.9.26',
-            'beautifulsoup4>=4.8.1']
 
 # The rest you shouldn't have to touch too much :)
 # ------------------------------------------------
@@ -59,7 +54,18 @@ setup(
     entry_points={
         'console_scripts': ['enex2md=enex2md.cli:app'],
     },
-    install_requires=REQUIRED,
+    install_requires=[
+        "Click>=7.0",
+        "lxml>=4.4.1",
+        "python-dateutil>=2.7.0",
+        "html2text>=2019.9.26",
+        "beautifulsoup4>=4.8.1",
+    ],
+    extras_require={
+        "dev": [
+            "pytest>=7.4.0",
+        ]
+    },
     include_package_data=True,
     license='MIT',
     classifiers=[

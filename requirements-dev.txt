@@ -1,4 +1,0 @@
-flake8>=3.7.0
-twine>=2.0.0
-wheel>=0.33.6
-pytest>=7.4.0
