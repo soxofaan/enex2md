@@ -26,9 +26,10 @@ class Converter(object):
 
     date_format = '%h %d %Y %H:%M:%S'
 
-    def __init__(self, enex_file, write_to_disk):
+    def __init__(self, enex_file, write_to_disk: bool, front_matter: bool = False):
         self.enex_file = enex_file
         self.write_to_disk = write_to_disk
+        self.front_matter = front_matter
 
     def echo_info(self):
         return f"Enex-file: {self.enex_file}"
@@ -286,22 +287,32 @@ class Converter(object):
         return folder_name
 
     def _format_note(self, note: Note) -> List[str]:
+        metadata = {
+            k: note[k]
+            for k in ["title", "created", "author", "updated", "source_url"]
+            if k in note and note[k]
+        }
+        if note.get("tags"):
+            metadata["tags"] = ", ".join(note["tags"])
+
         note_content = []
+        if self.front_matter:
+            note_content.append("---")
+            note_content.extend(f"{k}: {v}" for k, v in metadata.items())
+            note_content.append("---")
+            note_content.append("")
+            note_content.append("")
+
         note_content.append(f"# {note['title']}")
         note_content.append("")
-        note_content.append("## Note metadata")
-        note_content.append("")
-        if 'author' in note:
-            note_content.append(f"- Created by: {note['author']}")
-        note_content.append(f"- Created at: {note['created']}")
-        if 'updated' in note:
-            note_content.append(f"- Updated at: {note['updated']}")
-        if 'source_url' in note:
-            note_content.append(f"- Source URL: <{note['source_url']}>")
-        note_content.append(f"- Tags: {note['tags_string']}")
-        note_content.append("")
-        note_content.append("## Note Content")
-        note_content.append("")
+        if not self.front_matter:
+            note_content.append("## Note metadata")
+            note_content.append("")
+            note_content.extend(f"- {k.title()}: {v}" for k, v in metadata.items())
+            note_content.append("")
+            note_content.append("## Note Content")
+            note_content.append("")
+
         note_content.append(note['content'])
 
         return note_content
