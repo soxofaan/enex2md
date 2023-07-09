@@ -14,7 +14,7 @@ Enex2md is a command-line utility to convert Evernote export files (`*.enex`) to
 
 ## Features
 
-In addition to the note content itself, the note metadata is included in the resulting Markdown. The enex-bundle may contain one or more notes.
+In addition to the note content itself, the note metadata is included in the resulting Markdown. The ENEX-bundle may contain one or more notes.
 
 Within the note content, the following features are supported:
 
@@ -26,42 +26,31 @@ Within the note content, the following features are supported:
 - [x] Code blocks
 - [x] Subsequent empty lines are compressed to one.
 
-The html in enex files is *somewhat interesting*, thus some *magic is used to massage the data to functioning feature-rich Markdown*. The Magic Book used here has not yet been fully written, so there might be some unfortunate side effects. Should you find one, [open an issue on GitHub](https://github.com/janikarh/enex2md/issues) with a well written description and **a test enex file** as an attachment.
+The HTML in ENEX files is *somewhat interesting*, thus some *magic is used to massage the data to functioning feature-rich Markdown*. The Magic Book used here has not yet been fully written, so there might be some unfortunate side effects.
 
-See [Changelog](https://github.com/janikarh/enex2md/blob/master/CHANGELOG.md) for more details.
+See [Changelog](https://github.com/soxofaan/enex2md/blob/master/CHANGELOG.md) for more details.
 
-## Installation
 
-**Installing to a virtual environment is strongly recommended.** To install, run:
 
-`pip install -U enex2md`
+## Development/Installation
+
+> **Note**
+> As always, it is strongly recommended to workt in some kind of virtual environment
+
+Clone the [repository](https://github.com/soxofaan/enex2md) to your local machine, and install the project in your virtual env:
+
+```shell
+pip install -e .
+```
 
 ## Usage
 
-To use the CLI after installing, run the conversion with:
+Convert a given ENEX file:
 
-`enex2md [enex-file-to-process]`
+```shell
+enex2md notebook.enex
+```
 
 The output is written to `STDOUT` by default. If you want to write to disk instead, add a flag `--disk` to the command. This option will create a directory based on run time timestamp, and place individual files under that.
 
 *Please note, that on STDOUT output option attachments (including images) are not processed!*
-
-## Development
-
-Clone the [repository](https://github.com/janikarh/enex2md) to your local machine.
-
-*I strongly recommend using a virtual environment for development.*
-
-Install the requirements with:
-
-`pip install -r requirements.txt`
-
-From the root of the repository, you can run the app with:
-
-`python -m enex2md.cli foo.enex`
-
-After editing the content, try to install the package locally with:
-
-`python setup.py install`
-
-See that everything works. You can uninstall the dev package with `pip uninstall enex2md`.
