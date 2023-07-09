@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE en-export SYSTEM "http://xml.evernote.com/pub/evernote-export4.dtd">
+<en-export export-date="20230809T184351Z" application="Evernote" version="10.58.8">
+  <note>
+    <title>The title</title>
+    <created>20230709T184204Z</created>
+    <updated>20230709T184322Z</updated>
+    <note-attributes>
+      <author>John Doe</author>
+    </note-attributes>
+    <content>
+      <![CDATA[<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd"><en-note><div>Things to buy:</div><ul><li><div>apple</div></li><li><div>banana</div></li><li><div>chocolate</div></li></ul><div><br/></div></en-note>      ]]>
+    </content>
+  </note>
+</en-export>
