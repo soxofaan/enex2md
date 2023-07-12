@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [Unreleased]
+
+### Added
+
+- Add option to add note metadata in "frontmatter" style instead of Markdown section
+- Started with basic test suite
+- Added GitHub actions for running test suite and linting checks
+
+### Changed
+
+- Use `logging` instead of basic `print`, for more library-like behavior
+- Use ISO format for created/updated timestamp instead of non-standard custom format
+- Migrated to `pyproject.toml`
+
+### Removed
+
+- Dropped support for Python 3.7 or lower
+
+### Fixed
+
+- Fixed indentation issue with nested lists
+
+
 ## [0.4.2] - 2019-11-18
 
 ### Added
