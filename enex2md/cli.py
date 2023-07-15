@@ -28,8 +28,6 @@ def app(disk, front_matter, input_file):
     converter = Converter(input_file, disk, front_matter=front_matter)
     converter.convert()
 
-    sys.exit()
-
 
 if __name__ == '__main__':
     app()

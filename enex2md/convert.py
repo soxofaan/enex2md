@@ -34,7 +34,7 @@ class Converter(object):
 
     def convert(self):
         if not os.path.exists(self.enex_file):
-            raise IOError(f'The given input file "{self.enex_file}" does not exist.')
+            raise FileNotFoundError(f'The given input file "{self.enex_file}" does not exist.')
 
         tree = etree.parse(self.enex_file)
         notes = self._parse_notes(tree)
