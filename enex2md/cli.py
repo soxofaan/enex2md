@@ -1,7 +1,5 @@
 """Command Line Interface (CLI) for enex2md project."""
 
-# import os
-import sys
 import logging
 
 import click
