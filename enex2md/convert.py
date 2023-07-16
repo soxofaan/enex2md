@@ -1,13 +1,11 @@
 import base64
-import binascii
 import datetime
 import hashlib
-import json
 import os
 import re
-import sys
 import logging
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Optional
+from pathlib import Path
 
 from bs4 import BeautifulSoup
 from dateutil.parser import parse as dateutil_parse
@@ -20,17 +18,86 @@ _log = logging.getLogger(__name__)
 
 # Type annotation aliases
 Note = Dict[str, Union[str, datetime.datetime]]
+Attachment = Dict[str, Union[str, bytes]]
 
 
-class Converter(object):
+class Sink:
+    """Target to write markdown to"""
 
-    def __init__(self, enex_file, write_to_disk: bool, front_matter: bool = False):
+    handle_attachments = True
+
+    def store_attachment(self, note: Note, attachment: Attachment) -> Optional[Path]:
+        raise NotImplementedError
+
+    def store_note(self, note: Note, lines: List[str]):
+        raise NotImplementedError
+
+
+class StdOutSink(Sink):
+    """Dump to stdout"""
+
+    handle_attachments = False
+
+    def store_note(self, note: Note, lines: List[str]):
+        print("--- New Note ---")
+        for line in lines:
+            print(line)
+        print("--- End Note ---")
+
+
+class FileSystemSink(Sink):
+    """Write Markdown files"""
+
+    def __init__(self, root: Union[str, Path]):
+        # TODO: option to empty root first? Or fail when root is not empty?
+        # TODO: option to avoid overwriting existing files?
+        self.root = Path(root)
+
+    @classmethod
+    def legacy_root_from_enex(cls, enex_path: Union[str, Path]) -> "FileSystemSink":
+        """
+        Legacy mode: create output folder automatically from ENEX filename and timestamp
+        """
+        # TODO: eliminate this legacy approach
+        enex_path = Path(enex_path)
+        subfolder_name = _make_safe_name(enex_path.stem)
+        root = Path("output") / datetime.datetime.now().strftime("%Y%m%d_%H%M%S") / subfolder_name
+        root.mkdir(parents=True, exist_ok=True)
+        return cls(root=root)
+
+    def _note_path(self, note: Note) -> Path:
+        # TODO: smarter output files (e.g avoid conflicts, add timestamp/id, ...)
+        return self.root / (_make_safe_name(note["title"]) + ".md")
+
+    def store_attachment(self, note: Note, attachment: Attachment) -> Optional[Path]:
+        note_path = self._note_path(note)
+        path = self.root / (_make_safe_name(note["title"]) + "_attachments") / attachment["filename"]
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(attachment["data"])
+        return path.relative_to(note_path.parent)
+
+    def store_note(self, note: Note, lines: List[str]):
+        path = self._note_path(note)
+        with path.open("w", encoding="utf-8") as f:
+            for line in lines:
+                f.write(line + "\n")
+
+
+def _make_safe_name(input_string: str, counter=0) -> str:
+    better = input_string.replace(" ", "_")
+    better = "".join([c for c in better if re.match(r"\w", c)])
+    # For handling duplicates: If counter > 0, append to file/folder name.
+    if counter > 0:
+        better = f"{better}_{counter}"
+    return better
+
+
+class Converter:
+    def __init__(self, enex_file: Union[str, Path], sink: Sink, front_matter: bool = False):
+        # TODO: eliminate `enex_file` from this constructor
         self.enex_file = enex_file
-        self.write_to_disk = write_to_disk
         self.front_matter = front_matter
-
-    def echo_info(self):
-        return f"Enex-file: {self.enex_file}"
+        self.sink = sink
 
     def convert(self):
         if not os.path.exists(self.enex_file):
@@ -38,21 +105,17 @@ class Converter(object):
 
         tree = etree.parse(self.enex_file)
         notes = self._parse_notes(tree)
-        # self._export_notes(notes)
-
-        if self.write_to_disk:
-            output_folder = self._create_output_folder(self.enex_file)
-            self._write_markdown(notes, output_folder)
-        else:
-            _log.warning("Attachments are not processed with stdout output")
-            self._print_markdown(notes)
+        for note in notes:
+            self._export_note(note)
 
     def _parse_notes(self, xml_tree) -> List[Note]:
         note_count = 0
         notes = []
         raw_notes = xml_tree.xpath('//note')
+        # TODO: move for loop outside of parsing function
         for note in raw_notes:
             note_count += 1
+            # TODO: use dataclass instead of generic dict
             keys = {}
             keys['title'] = note.xpath('title')[0].text
             keys["created"] = dateutil_parse(note.xpath("created")[0].text)
@@ -77,7 +140,7 @@ class Converter(object):
             content_pre = note.xpath('content')[0].text
 
             # Preprosessors:
-            if self.write_to_disk:
+            if self.sink.handle_attachments:
                 content_pre = self._handle_attachments(content_pre)
             content_pre = self._handle_lists(content_pre)
             content_pre = self._handle_tasks(content_pre)
@@ -93,12 +156,8 @@ class Converter(object):
 
             keys['content'] = content_post
 
-            ''' Generate safe filename base for output.
-            The final name will be generated when writing, because of duplicate check. '''
-            keys['markdown_filename_base'] = self._make_safe_name(keys['title'])
-
             # Attachment data
-            if self.write_to_disk:
+            if self.sink.handle_attachments:
                 keys['attachments'] = []
                 raw_resources = note.xpath('resource')
                 for resource in raw_resources:
@@ -111,10 +170,11 @@ class Converter(object):
 
                     # Base64 encoded data has new lines! Because why not!
                     clean_data = re.sub(r'\n', '', resource.xpath('data')[0].text).strip()
-                    attachment['data'] = clean_data
+                    attachment["data"] = base64.b64decode(clean_data)
                     attachment['mime_type'] = resource.xpath('mime')[0].text
                     keys['attachments'].append(attachment)
 
+            # TODO: yield instead of append
             notes.append(keys)
 
         _log.info(f"Processed {note_count} note(s).")
@@ -259,31 +319,6 @@ class Converter(object):
 
         return text
 
-    def _export_notes(self, notes: List[Note]) -> None:
-        sys.stdout.write(json.dumps(notes, indent=4, sort_keys=True))
-
-    def _make_safe_name(self, input_string: str, counter=0) -> str:
-        better = input_string.replace(' ', '_')
-        better = "".join([c for c in better if re.match(r'\w', c)])
-        # For handling duplicates: If counter > 0, append to file/folder name.
-        if counter > 0:
-            better = f"{better}_{counter}"
-        return better
-
-    def _create_output_folder(self, input_name: str) -> str:
-        ''' See that the folder does not exist. If it doesn't, create it.
-            Name is created from a timestamp: 20190202_172208
-        '''
-
-        subfolder_name = input_name.split('/')[-1]
-        subfolder_name = self._make_safe_name(subfolder_name.split('.')[0])
-
-        folder_name = f"output/{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}/{subfolder_name}"
-        if not os.path.exists(folder_name):
-            os.makedirs(folder_name)
-
-        return folder_name
-
     def _format_note(self, note: Note) -> List[str]:
         metadata = {
             k: note[k]
@@ -319,67 +354,16 @@ class Converter(object):
 
         return note_content
 
-    def _print_markdown(self, notes: List[Note]) -> None:
-        for note in notes:
-            print("--- New Note ---")
-            for line in self._format_note(note):
-                print(line)
-            print("--- End Note ---")
+    def _export_note(self, note: Note):
+        # First: store attachments and fix references
+        for attachment in note.get("attachments", []):
+            attachment_ref = self.sink.store_attachment(note=note, attachment=attachment)
 
-    def _write_markdown(self, notes: List[Note], output_folder: str) -> None:
-        for note in notes:
-            # Check, that the file name does not exist already. If it does, generate a new one.
-            filename_base = note['markdown_filename_base']
-            filename = f"{output_folder}/{filename_base}.md"
-            counter = 0
-            while os.path.exists(filename):
-                counter += 1
-                filename_base = self._make_safe_name(note['markdown_filename_base'], counter)
-                filename = f"{output_folder}/{filename_base}.md"
+            # Fix attachment reference to note content
+            md5_hash = hashlib.md5(attachment["data"]).hexdigest()
+            note["content"] = note["content"].replace(
+                f"ATCHMT:{md5_hash}", f"\n![{attachment['filename']}]({attachment_ref})"
+            )
 
-            """ Write attachments to disk, and fix references to note content.
-            keys['attachments'][attachment_filename]['filename'] = attachment_filename
-            keys['attachments'][attachment_filename]['data'] = resource.xpath('data')[0].text
-            keys['attachments'][attachment_filename]['mime_type'] = resource.xpath('mime')[0].text
-            """
-            if 'attachments' in note and note['attachments']:
-                attachment_folder_name = f"{output_folder}/{filename_base}_attachments"
-                if not os.path.exists(attachment_folder_name):
-                    os.makedirs(attachment_folder_name)
-
-                for attachment in note['attachments']:
-                    try:
-                        decoded_attachment = base64.b64decode(attachment['data'])
-                        with open(f"{attachment_folder_name}/{attachment['filename']}", 'wb') as attachment_file:
-                            attachment_file.write(decoded_attachment)
-
-                        # Create MD5 hash
-                        md5 = hashlib.md5()
-                        md5.update(decoded_attachment)
-                        md5_hash = binascii.hexlify(md5.digest()).decode()
-
-                        # Fix attachment reference to note content
-                        note = self._fix_attachment_reference(
-                            note,
-                            md5_hash,
-                            attachment['mime_type'],
-                            f"{filename_base}_attachments",
-                            attachment['filename']
-                        )
-
-                    except Exception:
-                        _log.exception(f"Error processing attachment on note {filename_base}, attachment: {attachment['filename']}")
-
-            """ Write the actual markdown note to disk. """
-            with open(filename, 'w') as output_file:
-                output_file.writelines("%s\n" % ln for ln in self._format_note(note))
-
-    def _fix_attachment_reference(self, note: str, md5_hash, mime_type, dir, name):
-        content = note['content']
-        if mime_type.startswith('image/'):
-            content = content.replace(f"ATCHMT:{md5_hash}", f"\n![{name}]({dir}/{name})")
-        else:
-            # For other than image attachments, we write the same ! in the beginning.
-            content = content.replace(f"ATCHMT:{md5_hash}", f"\n![{name}]({dir}/{name})")
-        note['content'] = content
-        return note
+        # Store note itself
+        self.sink.store_note(note=note, lines=self._format_note(note))

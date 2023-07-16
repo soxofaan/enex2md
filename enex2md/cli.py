@@ -4,7 +4,7 @@ import logging
 
 import click
 
-from enex2md.convert import Converter
+from enex2md.convert import Converter, StdOutSink, FileSystemSink
 # from enex2md import __version__
 
 _log = logging.getLogger(__name__)
@@ -17,13 +17,12 @@ def app(disk, front_matter, input_file):
     """ Run the converter. Requires the input_file (data.enex) to be processed as the first argument. """
     logging.basicConfig(level=logging.INFO)
     if disk:
-        output_option = 'DISK'
+        sink = FileSystemSink.legacy_root_from_enex(input_file)
     else:
-        output_option = 'STDOUT'
-    logging.info(f"Processing input file: {input_file}, writing output to {output_option}.")
-    # print(__version__)
+        sink = StdOutSink()
+    logging.info(f"Processing input file: {input_file}, using {sink}.")
 
-    converter = Converter(input_file, disk, front_matter=front_matter)
+    converter = Converter(enex_file=input_file, sink=sink, front_matter=front_matter)
     converter.convert()
 
 
