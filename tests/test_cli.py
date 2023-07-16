@@ -1,4 +1,3 @@
-import pytest
 from enex2md.cli import app
 from pathlib import Path
 from click.testing import CliRunner
