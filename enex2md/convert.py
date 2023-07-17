@@ -1,15 +1,19 @@
 import base64
+import dataclasses
 import datetime
 import hashlib
 import os
 import re
 import logging
-from typing import List, Dict, Union, Optional
+from typing import List, Dict, Union, Optional, Iterator, Callable
 from pathlib import Path
+import xml.etree.ElementTree
 
 from bs4 import BeautifulSoup
 from dateutil.parser import parse as dateutil_parse
 import html2text
+
+# TODO: possible to eliminate dependency on lxml?
 from lxml import etree
 
 
@@ -90,6 +94,106 @@ def _make_safe_name(input_string: str, counter=0) -> str:
     if counter > 0:
         better = f"{better}_{counter}"
     return better
+
+
+@dataclasses.dataclass(frozen=True)
+class ParsedAttachment:
+    file_name: str
+    data: bytes
+    mime_type: str
+    width: Optional[int] = None
+    height: Optional[int] = None
+
+
+@dataclasses.dataclass
+class ParsedNote:
+    title: str
+    content: str
+    tags: List[str]
+    created: datetime.datetime
+    updated: Optional[datetime.datetime] = None
+    author: Optional[str] = None
+    source_url: Optional[str] = None
+    attachments: Optional[List[ParsedAttachment]] = None
+
+
+class EnexParser:
+    """Evernote Export (XML) file parser"""
+
+    def __init__(self, chunk_size: int = 1024 * 1024, handle_attachments: bool = True):
+        self.chunk_size = chunk_size
+        self.handle_attachments = handle_attachments
+
+    def extract_note_elements(self, path: Union[str, Path]) -> Iterator[xml.etree.ElementTree.Element]:
+        """Extract notes from given ENEX (XML) file as XML Elements"""
+        # Inspired by https://github.com/dogsheep/evernote-to-sqlite
+        parser = xml.etree.ElementTree.XMLPullParser(["start", "end"])
+        root = None
+        # TODO: show progress of reading the XML file chunks.
+        with Path(path).open("r", encoding="utf-8") as f:
+            while True:
+                chunk = f.read(self.chunk_size)
+                if not chunk:
+                    break
+                parser.feed(chunk)
+                for event, el in parser.read_events():
+                    if event == "start" and root is None:
+                        root = el
+                    if event == "end" and el.tag == "note":
+                        yield el
+                    root.clear()
+
+    def _get_value(
+        self, element: xml.etree.ElementTree.Element, path: str, convertor: Optional[Callable] = None, default=None
+    ):
+        """Get value from XML Element"""
+        value = element.find(path)
+        if value is None:
+            return default
+        value = value.text
+        if convertor:
+            value = convertor(value)
+        return value
+
+    def _datetime_parse(self, s: str) -> datetime.datetime:
+        """Parse datetime formet used in ENEX"""
+        d = datetime.datetime.strptime(s, "%Y%m%dT%H%M%SZ")
+        return d.replace(tzinfo=datetime.timezone.utc)
+
+    def parse_attachment_element(self, element: xml.etree.ElementTree.Element) -> ParsedAttachment:
+        """Parse an attachment (resource) XML element."""
+        # Parse data (base64 with newlines)
+        data = re.sub(r"\s+", "", element.find("data").text)
+        data = base64.b64decode(data)
+        return ParsedAttachment(
+            file_name=self._get_value(element, "resource-attributes/file-name"),
+            data=data,
+            mime_type=self._get_value(element, "mime"),
+            width=self._get_value(element, "width", convertor=int),
+            height=self._get_value(element, "height", convertor=int),
+        )
+
+    def parse_note_element(self, element: xml.etree.ElementTree.Element) -> ParsedNote:
+        """Parse a note XML element."""
+        if self.handle_attachments:
+            attachments = [self.parse_attachment_element(e) for e in element.iterfind("resource")]
+        else:
+            attachments = None
+        return ParsedNote(
+            title=(self._get_value(element, "title")),
+            content=(self._get_value(element, "content")),
+            tags=[e.text for e in element.iterfind("tag")],
+            created=(self._get_value(element, "created", convertor=self._datetime_parse)),
+            updated=(self._get_value(element, "updated", convertor=self._datetime_parse)),
+            author=(self._get_value(element, "note-attributes/author")),
+            source_url=(self._get_value(element, "note-attributes/source-url")),
+            attachments=attachments,
+        )
+
+    def extract_notes(self, enex_path: Union[str, Path]) -> Iterator[ParsedNote]:
+        """Extract all notes from given ENEX file."""
+        for element in self.extract_note_elements(enex_path):
+            yield self.parse_note_element(element)
 
 
 class Converter:

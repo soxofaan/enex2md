@@ -1,6 +1,8 @@
 import textwrap
 from pathlib import Path
-from enex2md.convert import Converter, FileSystemSink
+from enex2md.convert import Converter, FileSystemSink, EnexParser
+import datetime
+
 
 enex_root = Path(__file__).parent / "enex"
 
@@ -149,3 +151,57 @@ def test_attachment(tmp_path, monkeypatch):
         """
     )
     assert png_path.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+class TestEnexParser:
+    def test_extract_elements(self):
+        parser = EnexParser()
+        path = (enex_root / "notebook01.enex").absolute()
+        elements = parser.extract_note_elements(path)
+        first = next(elements)
+        assert list(elements) == []
+        assert first.tag == "note"
+        assert first.find("title").text == "The title"
+        assert first.find("note-attributes/author").text == "John Doe"
+        assert "banana" in first.find("content").text
+
+    def test_extract_notes(self):
+        parser = EnexParser()
+        path = (enex_root / "notebook04.enex").absolute()
+        notes = parser.extract_notes(path)
+        first = next(notes)
+        second = next(notes)
+        assert list(notes) == []
+
+        assert first.title == "Some tasks"
+        assert "Some things to do" in first.content
+        assert first.created == datetime.datetime(2023, 7, 17, 19, 16, 38, tzinfo=datetime.timezone.utc)
+        assert first.updated == datetime.datetime(2023, 7, 17, 19, 19, 26, tzinfo=datetime.timezone.utc)
+        assert first.author == "John Doe"
+        assert first.source_url is None
+        assert first.attachments == []
+
+        assert second.title == "Hello world"
+        assert "Hello world in Python" in second.content
+        assert second.created == datetime.datetime(2023, 7, 17, 19, 14, 28, tzinfo=datetime.timezone.utc)
+        assert second.updated == datetime.datetime(2023, 7, 17, 19, 19, 43, tzinfo=datetime.timezone.utc)
+        assert second.author == "John Doe"
+        assert second.source_url is None
+        assert second.attachments == []
+
+    def test_extract_notes_with_attachments(self):
+        parser = EnexParser()
+        path = (enex_root / "notebook03.enex").absolute()
+        notes = parser.extract_notes(path)
+        first = next(notes)
+        assert list(notes) == []
+
+        assert first.title == "Fa fa fa"
+        assert "lo lo lo" in first.content
+        assert first.author == "John Doe"
+        assert len(first.attachments) == 1
+        attachment = first.attachments[0]
+        assert attachment.file_name == "rckrll.png"
+        assert attachment.mime_type == "image/png"
+        assert attachment.width == 64
+        assert attachment.height == 32
