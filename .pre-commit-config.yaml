@@ -14,6 +14,11 @@ repos:
     rev: 1.7.2
     hooks:
       - id: darker
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        name: isort (python)
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.0.278
     hooks:
