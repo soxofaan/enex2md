@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE en-export SYSTEM "http://xml.evernote.com/pub/evernote-export4.dtd">
+<en-export export-date="20230817T192048Z" application="Evernote" version="10.58.8">
+  <note>
+    <title>Some tasks</title>
+    <created>20230717T191638Z</created>
+    <updated>20230717T191926Z</updated>
+    <note-attributes>
+      <author>John Doe</author>
+    </note-attributes>
+    <content>
+      <![CDATA[<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd"><en-note><div>Some things to do:</div><div style="--en-task-group:true; --en-id:d5fa4612-c122-4627-a670-b8d3096f8611;--en-content-hash:a784f502a404d0dfdcac23b268614c16;-webkit-user-modify:read-only;-moz-user-modify:read-only;user-modify:read-only;border-radius:3px;border:1px solid rgba(182,182,182,0.09);background:rgba(174,174,174,0.09);overflow:hidden;color:#868686"><div style="background:rgba(182,182,182,0.09) no-repeat 6px 6px url(&quot;data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzg2ODY4NiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTE5LjcyNTEgMjBDMjAuMTgxIDIwIDIwLjYwMTEgMTkuNzU2IDIwLjgyOSAxOS4zNkMyMS4wNTcgMTguOTY0IDIxLjA1NyAxOC40NzYgMjAuODI5IDE4LjA4TDEzLjEwMzEgNC42Mzk5OUMxMi44NzYgNC4yNDM5OSAxMi40NTUxIDQgMTIgNEMxMS41NDQ5IDQgMTEuMTI0IDQuMjQzOTkgMTAuODk2MSA0LjYzOTk5TDMuMTcwOTggMTguMDhDMi45NDMwMSAxOC40NzYgMi45NDMwMSAxOC45NjQgMy4xNzA5OCAxOS4zNkMzLjM5ODEgMTkuNzU2IDMuODE4OTMgMjAgNC4yNzQwOCAyMEgxOS43MjUxWk00Ljg2NDg5IDE4LjRMMTIgNS45ODc5OEwxOS4xMzUxIDE4LjRINC44NjQ4OVoiLz4KPHBhdGggZD0iTTEyLjc1IDEwLjU3NTJDMTIuNzUgMTAuMTYxIDEyLjQxNDIgOS44MjUyMyAxMiA5LjgyNTIzQzExLjU4NTggOS44MjUyMyAxMS4yNSAxMC4xNjEgMTEuMjUgMTAuNTc1MlYxMy4yOTc5QzExLjI1IDEzLjcxMjEgMTEuNTg1OCAxNC4wNDc5IDEyIDE0LjA0NzlDMTIuNDE0MiAxNC4wNDc5IDEyLjc1IDEzLjcxMjEgMTIuNzUgMTMuMjk3OVYxMC41NzUyWiIvPgo8cGF0aCBkPSJNMTIuODc1IDE1Ljk1MTFDMTIuODc1IDE2LjQzNDQgMTIuNDgzMiAxNi44MjYxIDEyIDE2LjgyNjFDMTEuNTE2OCAxNi44MjYxIDExLjEyNSAxNi40MzQ0IDExLjEyNSAxNS45NTExQzExLjEyNSAxNS40Njc5IDExLjUxNjggMTUuMDc2MSAxMiAxNS4wNzYxQzEyLjQ4MzIgMTUuMDc2MSAxMi44NzUgMTUuNDY3OSAxMi44NzUgMTUuOTUxMVoiLz4KPC9zdmc+Cg==&quot;);padding:8px 38px;font-weight:600">Content not supported</div><div style="padding:2px 6px;margin: 1em">This block is a placeholder for Tasks, which has been officially released on the newest version of Evernote and is no longer supported on this version. Deleting or moving this block may cause unexpected behavior in newer versions of Evernote.</div></div><div><br/></div><div>that's all</div></en-note>      ]]>
+    </content>
+    <task>
+      <title>do this</title>
+      <created>20230717T191723Z</created>
+      <updated>20230717T191741Z</updated>
+      <taskStatus>open</taskStatus>
+      <taskFlag>false</taskFlag>
+      <sortWeight>B</sortWeight>
+      <noteLevelID>7086a43a-d3d7-40c5-8730-0f814f52128b</noteLevelID>
+      <taskGroupNoteLevelID>d5fa4612-c122-4627-a670-b8d3096f8611</taskGroupNoteLevelID>
+      <dueDate>2757600913T000000Z</dueDate>
+      <statusUpdated>20230717T191723Z</statusUpdated>
+      <creator>5765584</creator>
+      <lastEditor>5765584</lastEditor>
+    </task>
+    <task>
+      <title>do that</title>
+      <created>20230717T191741Z</created>
+      <updated>20230717T191741Z</updated>
+      <taskStatus>completed</taskStatus>
+      <taskFlag>false</taskFlag>
+      <sortWeight>J</sortWeight>
+      <noteLevelID>41c520da-439d-4ddc-b05c-5ad7584919b7</noteLevelID>
+      <taskGroupNoteLevelID>d5fa4612-c122-4627-a670-b8d3096f8611</taskGroupNoteLevelID>
+      <dueDate>2757600913T000000Z</dueDate>
+      <statusUpdated>20230717T191741Z</statusUpdated>
+      <creator>5765584</creator>
+      <lastEditor>5765584</lastEditor>
+    </task>
+    <task>
+      <title>do both</title>
+      <created>20230717T191741Z</created>
+      <updated>20230717T191741Z</updated>
+      <taskStatus>open</taskStatus>
+      <taskFlag>false</taskFlag>
+      <sortWeight>R</sortWeight>
+      <noteLevelID>b64a4eec-0a30-45cc-a245-dc6ff15fe60e</noteLevelID>
+      <taskGroupNoteLevelID>d5fa4612-c122-4627-a670-b8d3096f8611</taskGroupNoteLevelID>
+      <dueDate>2757600913T000000Z</dueDate>
+      <statusUpdated>20230717T191741Z</statusUpdated>
+      <creator>5765584</creator>
+      <lastEditor>5765584</lastEditor>
+    </task>
+  </note>
+  <note>
+    <title>Hello world</title>
+    <created>20230717T191428Z</created>
+    <updated>20230717T191943Z</updated>
+    <tag>python</tag>
+    <tag>tutorial</tag>
+    <note-attributes>
+      <author>John Doe</author>
+    </note-attributes>
+    <content>
+      <![CDATA[<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd"><en-note><div><br/></div><div>Hello world in Python:</div><div style="--en-codeblock:true; --en-lineWrapping:false;box-sizing: border-box; padding: 8px; font-family: Monaco, Menlo, Consolas, &quot;Courier New&quot;, monospace; font-size: 12px; color: rgb(51, 51, 51); border-top-left-radius: 4px; border-top-right-radius: 4px; border-bottom-right-radius: 4px; border-bottom-left-radius: 4px; background-color: rgb(251, 250, 248); border: 1px solid rgba(0, 0, 0, 0.14902); background-position: initial initial; background-repeat: initial initial;"><div>print("hello world")</div></div><div><br/></div><div><br/></div><div>Well done!</div></en-note>      ]]>
+    </content>
+  </note>
+</en-export>
