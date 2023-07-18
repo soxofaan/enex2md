@@ -196,10 +196,6 @@ class Converter:
         self.front_matter = front_matter
 
     def convert(self, enex: Union[str, Path], sink: Sink):
-        enex = Path(enex)
-        if not enex.exists():
-            raise FileNotFoundError(f"The given input file {str(enex)!r} does not exist.")
-
         parser = EnexParser()
         for note in parser.extract_notes(enex):
             self.export_note(note, sink)
