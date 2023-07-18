@@ -1,8 +1,8 @@
+import datetime
 import textwrap
 from pathlib import Path
-from enex2md.convert import Converter, FileSystemSink, EnexParser
-import datetime
 
+from enex2md.convert import Converter, EnexParser, FileSystemSink
 
 enex_root = Path(__file__).parent / "enex"
 
@@ -10,8 +10,8 @@ enex_root = Path(__file__).parent / "enex"
 def test_basic(tmp_path, monkeypatch):
     path = (enex_root / "notebook01.enex").absolute()
     monkeypatch.chdir(tmp_path)
-    converter = Converter(enex_file=str(path), sink=FileSystemSink.legacy_root_from_enex(path))
-    converter.convert()
+    converter = Converter()
+    converter.convert(enex=path, sink=FileSystemSink.legacy_root_from_enex(path))
 
     generated_files = [p.relative_to(tmp_path) for p in tmp_path.glob("**/*") if p.is_file()]
     assert len(generated_files) == 1
@@ -43,8 +43,8 @@ def test_basic(tmp_path, monkeypatch):
 def test_frontmatter(tmp_path, monkeypatch):
     path = (enex_root / "notebook01.enex").absolute()
     monkeypatch.chdir(tmp_path)
-    converter = Converter(enex_file=str(path), sink=FileSystemSink.legacy_root_from_enex(path), front_matter=True)
-    converter.convert()
+    converter = Converter(front_matter=True)
+    converter.convert(enex=path, sink=FileSystemSink.legacy_root_from_enex(path))
 
     generated_files = [p.relative_to(tmp_path) for p in tmp_path.glob("**/*") if p.is_file()]
     assert len(generated_files) == 1
@@ -75,8 +75,8 @@ def test_frontmatter(tmp_path, monkeypatch):
 def test_nested_lists(tmp_path, monkeypatch):
     path = (enex_root / "notebook02.enex").absolute()
     monkeypatch.chdir(tmp_path)
-    converter = Converter(enex_file=str(path), sink=FileSystemSink.legacy_root_from_enex(path))
-    converter.convert()
+    converter = Converter()
+    converter.convert(enex=path, sink=FileSystemSink.legacy_root_from_enex(path))
 
     generated_files = [p.relative_to(tmp_path) for p in tmp_path.glob("**/*") if p.is_file()]
     assert len(generated_files) == 1
@@ -122,8 +122,8 @@ def test_nested_lists(tmp_path, monkeypatch):
 def test_attachment(tmp_path, monkeypatch):
     path = (enex_root / "notebook03.enex").absolute()
     monkeypatch.chdir(tmp_path)
-    converter = Converter(enex_file=str(path), sink=FileSystemSink.legacy_root_from_enex(path))
-    converter.convert()
+    converter = Converter()
+    converter.convert(enex=path, sink=FileSystemSink.legacy_root_from_enex(path))
 
     generated_files = [p.relative_to(tmp_path) for p in tmp_path.glob("**/*") if p.is_file()]
     assert len(generated_files) == 2

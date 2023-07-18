@@ -2,104 +2,24 @@ import base64
 import dataclasses
 import datetime
 import hashlib
-import os
-import re
+import itertools
 import logging
-from typing import List, Dict, Union, Optional, Iterator, Callable
-from pathlib import Path
+import re
 import xml.etree.ElementTree
+from pathlib import Path
+from typing import Callable, Iterable, Iterator, List, Optional, Union
 
-from bs4 import BeautifulSoup
-from dateutil.parser import parse as dateutil_parse
 import html2text
-
-# TODO: possible to eliminate dependency on lxml?
-from lxml import etree
-
+from bs4 import BeautifulSoup
 
 _log = logging.getLogger(__name__)
-
-
-# Type annotation aliases
-Note = Dict[str, Union[str, datetime.datetime]]
-Attachment = Dict[str, Union[str, bytes]]
-
-
-class Sink:
-    """Target to write markdown to"""
-
-    handle_attachments = True
-
-    def store_attachment(self, note: Note, attachment: Attachment) -> Optional[Path]:
-        raise NotImplementedError
-
-    def store_note(self, note: Note, lines: List[str]):
-        raise NotImplementedError
-
-
-class StdOutSink(Sink):
-    """Dump to stdout"""
-
-    handle_attachments = False
-
-    def store_note(self, note: Note, lines: List[str]):
-        print("--- New Note ---")
-        for line in lines:
-            print(line)
-        print("--- End Note ---")
-
-
-class FileSystemSink(Sink):
-    """Write Markdown files"""
-
-    def __init__(self, root: Union[str, Path]):
-        # TODO: option to empty root first? Or fail when root is not empty?
-        # TODO: option to avoid overwriting existing files?
-        self.root = Path(root)
-
-    @classmethod
-    def legacy_root_from_enex(cls, enex_path: Union[str, Path]) -> "FileSystemSink":
-        """
-        Legacy mode: create output folder automatically from ENEX filename and timestamp
-        """
-        # TODO: eliminate this legacy approach
-        enex_path = Path(enex_path)
-        subfolder_name = _make_safe_name(enex_path.stem)
-        root = Path("output") / datetime.datetime.now().strftime("%Y%m%d_%H%M%S") / subfolder_name
-        root.mkdir(parents=True, exist_ok=True)
-        return cls(root=root)
-
-    def _note_path(self, note: Note) -> Path:
-        # TODO: smarter output files (e.g avoid conflicts, add timestamp/id, ...)
-        return self.root / (_make_safe_name(note["title"]) + ".md")
-
-    def store_attachment(self, note: Note, attachment: Attachment) -> Optional[Path]:
-        note_path = self._note_path(note)
-        path = self.root / (_make_safe_name(note["title"]) + "_attachments") / attachment["filename"]
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(attachment["data"])
-        return path.relative_to(note_path.parent)
-
-    def store_note(self, note: Note, lines: List[str]):
-        path = self._note_path(note)
-        with path.open("w", encoding="utf-8") as f:
-            for line in lines:
-                f.write(line + "\n")
-
-
-def _make_safe_name(input_string: str, counter=0) -> str:
-    better = input_string.replace(" ", "_")
-    better = "".join([c for c in better if re.match(r"\w", c)])
-    # For handling duplicates: If counter > 0, append to file/folder name.
-    if counter > 0:
-        better = f"{better}_{counter}"
-    return better
 
 
 @dataclasses.dataclass(frozen=True)
 class ParsedAttachment:
     file_name: str
     data: bytes
+    md5_hash: str
     mime_type: str
     width: Optional[int] = None
     height: Optional[int] = None
@@ -156,7 +76,7 @@ class EnexParser:
         return value
 
     def _datetime_parse(self, s: str) -> datetime.datetime:
-        """Parse datetime formet used in ENEX"""
+        """Parse datetime format used in ENEX"""
         d = datetime.datetime.strptime(s, "%Y%m%dT%H%M%SZ")
         return d.replace(tzinfo=datetime.timezone.utc)
 
@@ -168,6 +88,7 @@ class EnexParser:
         return ParsedAttachment(
             file_name=self._get_value(element, "resource-attributes/file-name"),
             data=data,
+            md5_hash=hashlib.md5(data).hexdigest(),
             mime_type=self._get_value(element, "mime"),
             width=self._get_value(element, "width", convertor=int),
             height=self._get_value(element, "height", convertor=int),
@@ -192,97 +113,136 @@ class EnexParser:
 
     def extract_notes(self, enex_path: Union[str, Path]) -> Iterator[ParsedNote]:
         """Extract all notes from given ENEX file."""
+        # TODO: progress bar or counter of extracted notes?
         for element in self.extract_note_elements(enex_path):
             yield self.parse_note_element(element)
 
 
+class Sink:
+    """Target to write markdown to"""
+
+    handle_attachments = True
+
+    def store_attachment(self, note: ParsedNote, attachment: ParsedAttachment) -> Optional[Path]:
+        raise NotImplementedError
+
+    def store_note(self, note: ParsedNote, lines: Iterable[str]):
+        raise NotImplementedError
+
+
+class StdOutSink(Sink):
+    """Dump to stdout"""
+
+    handle_attachments = False
+
+    def store_note(self, note: ParsedNote, lines: Iterable[str]):
+        print("--- New Note ---")
+        for line in lines:
+            print(line)
+        print("--- End Note ---")
+
+
+class FileSystemSink(Sink):
+    """Write Markdown files"""
+
+    def __init__(self, root: Union[str, Path]):
+        # TODO: option to empty root first? Or fail when root is not empty?
+        # TODO: option to avoid overwriting existing files?
+        self.root = Path(root)
+
+    @classmethod
+    def legacy_root_from_enex(cls, enex_path: Union[str, Path]) -> "FileSystemSink":
+        """
+        Legacy mode: create output folder automatically from ENEX filename and timestamp
+        """
+        # TODO: eliminate this legacy approach
+        enex_path = Path(enex_path)
+        subfolder_name = _make_safe_name(enex_path.stem)
+        root = Path("output") / datetime.datetime.now().strftime("%Y%m%d_%H%M%S") / subfolder_name
+        root.mkdir(parents=True, exist_ok=True)
+        return cls(root=root)
+
+    def _note_path(self, note: ParsedNote) -> Path:
+        # TODO: smarter output files (e.g avoid conflicts, add timestamp/id, ...)
+        return self.root / (_make_safe_name(note.title) + ".md")
+
+    def store_attachment(self, note: ParsedNote, attachment: ParsedAttachment) -> Optional[Path]:
+        note_path = self._note_path(note)
+        path = self.root / (_make_safe_name(note.title) + "_attachments") / attachment.file_name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(attachment.data)
+        return path.relative_to(note_path.parent)
+
+    def store_note(self, note: ParsedNote, lines: Iterable[str]):
+        path = self._note_path(note)
+        with path.open("w", encoding="utf-8") as f:
+            for line in lines:
+                f.write(line + "\n")
+
+
+def _make_safe_name(input_string: str, counter=0) -> str:
+    better = input_string.replace(" ", "_")
+    better = "".join([c for c in better if re.match(r"\w", c)])
+    # For handling duplicates: If counter > 0, append to file/folder name.
+    if counter > 0:
+        better = f"{better}_{counter}"
+    return better
+
+
 class Converter:
-    def __init__(self, enex_file: Union[str, Path], sink: Sink, front_matter: bool = False):
-        # TODO: eliminate `enex_file` from this constructor
-        self.enex_file = enex_file
+    """Convertor for ENEX note to Markdown format"""
+
+    def __init__(self, front_matter: bool = False):
         self.front_matter = front_matter
-        self.sink = sink
 
-    def convert(self):
-        if not os.path.exists(self.enex_file):
-            raise FileNotFoundError(f'The given input file "{self.enex_file}" does not exist.')
+    def convert(self, enex: Union[str, Path], sink: Sink):
+        parser = EnexParser()
+        for note in parser.extract_notes(enex):
+            self.export_note(note, sink)
 
-        tree = etree.parse(self.enex_file)
-        notes = self._parse_notes(tree)
-        for note in notes:
-            self._export_note(note)
+    def export_note(self, note: ParsedNote, sink: Sink):
+        content = note.content
 
-    def _parse_notes(self, xml_tree) -> List[Note]:
-        note_count = 0
-        notes = []
-        raw_notes = xml_tree.xpath('//note')
-        # TODO: move for loop outside of parsing function
-        for note in raw_notes:
-            note_count += 1
-            # TODO: use dataclass instead of generic dict
-            keys = {}
-            keys['title'] = note.xpath('title')[0].text
-            keys["created"] = dateutil_parse(note.xpath("created")[0].text)
-            if note.xpath("updated"):
-                keys["updated"] = dateutil_parse(note.xpath("updated")[0].text)
-            if note.xpath('note-attributes/author'):
-                keys['author'] = note.xpath('note-attributes/author')[0].text
-            if note.xpath('note-attributes/source-url'):
-                keys['source_url'] = note.xpath('note-attributes/source-url')[0].text
-            keys['tags'] = [tag.text for tag in note.xpath('tag')]
-            keys['tags_string'] = ", ".join(tag for tag in keys['tags'])
+        # Preprocessors:
+        if sink.handle_attachments:
+            content = self._handle_attachments(content)
+        content = self._handle_lists(content)
+        content = self._handle_tasks(content)
+        content = self._handle_strongs_emphases(content)
+        content = self._handle_tables(content)
+        content = self._handle_codeblocks(content)
 
-            ''' Content is HTML, and requires little bit of magic. '''
+        # Content is HTML, and requires little bit of magic.
+        # TODO: create this in __init__?
+        text_maker = html2text.HTML2Text()
+        text_maker.single_line_break = True
+        text_maker.inline_links = True
+        text_maker.use_automatic_links = False
+        text_maker.body_width = 0
+        text_maker.emphasis_mark = "*"
 
-            text_maker = html2text.HTML2Text()
-            text_maker.single_line_break = True
-            text_maker.inline_links = True
-            text_maker.use_automatic_links = False
-            text_maker.body_width = 0
-            text_maker.emphasis_mark = '*'
+        # Convert html > text
+        content = text_maker.handle(content)
 
-            content_pre = note.xpath('content')[0].text
+        # Postprocessors:
+        content = self._post_processor_code_newlines(content)
 
-            # Preprosessors:
-            if self.sink.handle_attachments:
-                content_pre = self._handle_attachments(content_pre)
-            content_pre = self._handle_lists(content_pre)
-            content_pre = self._handle_tasks(content_pre)
-            content_pre = self._handle_strongs_emphases(content_pre)
-            content_pre = self._handle_tables(content_pre)
-            content_pre = self._handle_codeblocks(content_pre)
+        if sink.handle_attachments and note.attachments:
+            for attachment in note.attachments:
+                attachment_ref = sink.store_attachment(note=note, attachment=attachment)
+                content = content.replace(
+                    f"ATCHMT:{attachment.md5_hash}",
+                    f"\n![{attachment.file_name}]({attachment_ref})",
+                )
 
-            # Convert html > text
-            content_text = text_maker.handle(content_pre)
-
-            # Postprocessors:
-            content_post = self._post_processor_code_newlines(content_text)
-
-            keys['content'] = content_post
-
-            # Attachment data
-            if self.sink.handle_attachments:
-                keys['attachments'] = []
-                raw_resources = note.xpath('resource')
-                for resource in raw_resources:
-                    attachment = {}
-                    try:
-                        attachment['filename'] = resource.xpath('resource-attributes/file-name')[0].text
-                    except IndexError:
-                        _log.warning(f"Skipping attachment on note with title \"{keys['title']}\" because the name xml element is missing (resource/resource-attributes/file-name).")
-                        continue
-
-                    # Base64 encoded data has new lines! Because why not!
-                    clean_data = re.sub(r'\n', '', resource.xpath('data')[0].text).strip()
-                    attachment["data"] = base64.b64decode(clean_data)
-                    attachment['mime_type'] = resource.xpath('mime')[0].text
-                    keys['attachments'].append(attachment)
-
-            # TODO: yield instead of append
-            notes.append(keys)
-
-        _log.info(f"Processed {note_count} note(s).")
-        return notes
+        # Store note itself
+        sink.store_note(
+            note=note,
+            lines=itertools.chain(
+                self._format_header(note),
+                [content],
+            ),
+        )
 
     def _handle_codeblocks(self, text: str) -> str:
         """ We would need to be able to recognise these (linebreaks added for brevity), and transform them to <pre> elements.
@@ -331,6 +291,7 @@ class Converter:
             if part.startswith('<en-media'):
                 match = re.match(r'<en-media hash="(?P<md5_hash>.*?)".*? />', part)
                 if match:
+                    # TODO: avoid hackish "ATCHMT"?
                     part = f"<div>ATCHMT:{match.group('md5_hash')}</div>"
             new_parts.append(part)
         text = ''.join(new_parts)
@@ -423,51 +384,37 @@ class Converter:
 
         return text
 
-    def _format_note(self, note: Note) -> List[str]:
+    def _format_header(self, note: ParsedNote) -> Iterator[str]:
         metadata = {
-            k: note[k]
-            for k in ["title", "author", "source_url"]
-            if k in note and note[k]
+            "title": note.title,
         }
+        if note.author:
+            metadata["author"] = note.author
+        if note.source_url:
+            metadata["source_url"] = note.source_url
         # TODO: option to format time in local time (instead of UTC)
-        metadata.update(
-            (k, note[k].isoformat()) for k in ["created", "updated"] if k in note and note[k]
-        )
-        if note.get("tags"):
-            metadata["tags"] = ", ".join(note["tags"])
+        if note.created:
+            metadata["created"] = note.created.isoformat()
+        if note.updated:
+            metadata["updated"] = note.updated.isoformat()
 
-        note_content = []
+        if note.tags:
+            metadata["tags"] = ", ".join(note.tags)
+
         if self.front_matter:
-            note_content.append("---")
-            note_content.extend(f"{k}: {v}" for k, v in metadata.items())
-            note_content.append("---")
-            note_content.append("")
-            note_content.append("")
+            yield "---"
+            yield from (f"{k}: {v}" for k, v in metadata.items())
+            yield "---"
+            yield ""
+            yield ""
 
-        note_content.append(f"# {note['title']}")
-        note_content.append("")
+        yield f"# {note.title}"
+        yield ""
         if not self.front_matter:
-            note_content.append("## Note metadata")
-            note_content.append("")
-            note_content.extend(f"- {k.title()}: {v}" for k, v in metadata.items())
-            note_content.append("")
-            note_content.append("## Note Content")
-            note_content.append("")
-
-        note_content.append(note['content'])
-
-        return note_content
-
-    def _export_note(self, note: Note):
-        # First: store attachments and fix references
-        for attachment in note.get("attachments", []):
-            attachment_ref = self.sink.store_attachment(note=note, attachment=attachment)
-
-            # Fix attachment reference to note content
-            md5_hash = hashlib.md5(attachment["data"]).hexdigest()
-            note["content"] = note["content"].replace(
-                f"ATCHMT:{md5_hash}", f"\n![{attachment['filename']}]({attachment_ref})"
-            )
-
-        # Store note itself
-        self.sink.store_note(note=note, lines=self._format_note(note))
+            # TODO: drop this old metadata style?
+            yield "## Note metadata"
+            yield ""
+            yield from (f"- {k.title()}: {v}" for k, v in metadata.items())
+            yield ""
+            yield "## Note Content"
+            yield ""

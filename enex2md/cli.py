@@ -4,7 +4,8 @@ import logging
 
 import click
 
-from enex2md.convert import Converter, StdOutSink, FileSystemSink
+from enex2md.convert import Converter, FileSystemSink, StdOutSink
+
 # from enex2md import __version__
 
 _log = logging.getLogger(__name__)
@@ -22,8 +23,8 @@ def app(disk, front_matter, input_file):
         sink = StdOutSink()
     logging.info(f"Processing input file: {input_file}, using {sink}.")
 
-    converter = Converter(enex_file=input_file, sink=sink, front_matter=front_matter)
-    converter.convert()
+    converter = Converter(front_matter=front_matter)
+    converter.convert(enex=input_file, sink=sink)
 
 
 if __name__ == '__main__':
