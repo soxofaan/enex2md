@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use `logging` instead of basic `print`, for more library-like behavior
 - Use ISO format for created/updated timestamp instead of non-standard custom format
 - Migrated to `pyproject.toml`
+- Split single `Converter` class in separate classes for different concerns:
+  XML parsing, Markdown conversion and actual file writing/export
+- Switch to streamed XML parsing and conversion to avoid having to keep all notes in memory all the time.
 
 ### Removed
 
