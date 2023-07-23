@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed indentation issue with nested lists
+- ENEX parsing: support both self-closing and closing tag form of `<en-media>` element
 
 
 ## [0.4.2] - 2019-11-18

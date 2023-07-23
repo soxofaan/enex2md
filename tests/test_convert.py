@@ -2,6 +2,8 @@ import datetime
 import textwrap
 from pathlib import Path
 
+import pytest
+
 from enex2md.convert import Converter, EnexParser, FileSystemSink
 
 enex_root = Path(__file__).parent / "enex"
@@ -119,8 +121,9 @@ def test_nested_lists(tmp_path, monkeypatch):
     )
 
 
-def test_attachment(tmp_path, monkeypatch):
-    path = (enex_root / "notebook03.enex").absolute()
+@pytest.mark.parametrize("enex", ["notebook03.enex", "notebook03-2.enex"])
+def test_attachment(tmp_path, monkeypatch, enex):
+    path = (enex_root / enex).absolute()
     monkeypatch.chdir(tmp_path)
     converter = Converter()
     converter.convert(enex=path, sink=FileSystemSink.legacy_root_from_enex(path))

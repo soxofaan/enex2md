@@ -280,21 +280,28 @@ class Converter:
         return str(soup)
 
     def _handle_attachments(self, text: str) -> str:
-        """ Note content may have attachments, such as images.
-        <div><en-media hash="..." type="application/pdf" style="cursor:pointer;" /></div>
-        <div><en-media hash="..." type="image/png" /><br /></div>
-        <div><en-media hash="..." type="image/jpeg" /></div>
         """
-        parts = re.split(r'(<en-media.*?/>)', text)
-        new_parts = []
-        for part in parts:
-            if part.startswith('<en-media'):
-                match = re.match(r'<en-media hash="(?P<md5_hash>.*?)".*? />', part)
-                if match:
-                    # TODO: avoid hackish "ATCHMT"?
-                    part = f"<div>ATCHMT:{match.group('md5_hash')}</div>"
-            new_parts.append(part)
-        text = ''.join(new_parts)
+        Note content may have attachments, such as images, e.g.:
+
+            <en-media hash="..." type="application/pdf" style="cursor:pointer;" />
+            <en-media hash="..." type="image/png" />
+            <en-media hash="..." type="image/jpeg" />
+        """
+
+        def replace_attachment(match):
+            h = re.search('hash="([0-9a-fA-F]+)"', match.group(1))
+            if h:
+                # TODO: avoid ad-hoc `ATCHMT:` construct? e.g. `![](enex2md://hash)
+                return f"<div>ATCHMT:{h.group(1)}</div>"
+            else:
+                _log.warning("Failed to find <en-media> hash")
+                return match.group(0)
+
+        text = re.sub(
+            r"<en-media ([^>]*)(/>|>\s*</en-media.*?>)",
+            replace_attachment,
+            text,
+        )
         return text
 
     def _handle_tables(self, text: str) -> str:
