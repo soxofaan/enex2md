@@ -1,19 +1,25 @@
 """Command Line Interface (CLI) for enex2md project."""
 
 import logging
+from pathlib import Path
+from typing import Iterable, Iterator
 
 import click
 
 from enex2md.convert import Converter, FileSystemSink, StdOutSink
 
-# from enex2md import __version__
-
 _log = logging.getLogger(__name__)
+
 
 @click.command()
 @click.option("--disk", is_flag=True, help="output to disk instead of stdout (default)")
 @click.option("--front-matter", is_flag=True, help='Put note metadata in a "frontmatter" block.')
-@click.option("--output-root", default=FileSystemSink.DEFAULT_OUTPUT_ROOT, help="Output root folder")
+@click.option(
+    "--output-root",
+    default=FileSystemSink.DEFAULT_OUTPUT_ROOT,
+    help="Output root folder",
+    type=click.Path(exists=False, file_okay=False, dir_okay=True),
+)
 @click.option(
     "--note-path-template",
     help="Path template for output notes.",
@@ -24,9 +30,13 @@ _log = logging.getLogger(__name__)
     help="Path template for attachment folder.",
     default=FileSystemSink.DEFAULT_ATTACHMENTS_PATH_TEMPLATE,
 )
-@click.argument("input_file")
-def app(disk, front_matter, output_root, input_file, note_path_template, attachments_path_template):
-    """ Run the converter. Requires the input_file (data.enex) to be processed as the first argument. """
+@click.argument(
+    "enex_sources",
+    nargs=-1,
+    required=True,
+    type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True, path_type=Path),
+)
+def app(disk, front_matter, output_root, enex_sources, note_path_template, attachments_path_template):
     logging.basicConfig(level=logging.INFO)
     # TODO: get rid of this non-useful --disk option?
     if disk:
@@ -37,11 +47,25 @@ def app(disk, front_matter, output_root, input_file, note_path_template, attachm
         )
     else:
         sink = StdOutSink()
-    # TODO: support converting multiple files, or walking folders
-    logging.info(f"Processing input file: {input_file}, using {sink}.")
+    _log.info(f"Using {sink=}")
 
     converter = Converter(front_matter=front_matter)
-    converter.convert(enex=input_file, sink=sink)
+
+    for enex_path in collect_enex_paths(enex_sources):
+        logging.info(f"Processing input file {enex_path}.")
+        converter.convert(enex=enex_path, sink=sink)
+
+
+def collect_enex_paths(enex_sources: Iterable[Path]) -> Iterator[Path]:
+    for enex_source in enex_sources:
+        if enex_source.is_file():
+            yield enex_source
+        elif enex_source.is_dir():
+            for p in enex_source.glob("*.enex"):
+                if p.is_file():
+                    yield p
+        else:
+            raise ValueError(enex_source)
 
 
 if __name__ == '__main__':

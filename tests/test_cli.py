@@ -17,8 +17,9 @@ def test_basic_no_args():
 def test_basic_nonexistent_file():
     args = ["inexistent.enex"]
     result = CliRunner().invoke(app, args=args)
-    assert result.exit_code == 1
-    assert isinstance(result.exception, FileNotFoundError)
+    assert result.exit_code == 2
+    assert isinstance(result.exception, SystemExit)
+    assert "Error: Invalid value for 'ENEX_SOURCES...': Path 'inexistent.enex' does not exist." in result.stdout
 
 
 def test_basic_stdout():
@@ -87,13 +88,13 @@ def test_custom_paths(tmp_path, monkeypatch):
     path = (enex_root / "notebook03.enex").absolute()
     args = [
         "--disk",
-        str(path),
         "--output-root",
         "dump",
         "--note-path-template",
         "{enex}/{created:%Y}/{created:%Y%m%d}-{title}.md",
         "--attachments-path-template",
         "{enex}/_resources/{created:%Y}/{created:%Y%m%d}-{title}",
+        str(path),
     ]
     monkeypatch.chdir(tmp_path)
     result = CliRunner().invoke(app, args)
@@ -125,3 +126,59 @@ def test_custom_paths(tmp_path, monkeypatch):
         """
     )
     assert generated_files[1].read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_multiple_enex_paths(tmp_path, monkeypatch):
+    args = [
+        "--disk",
+        "--output-root",
+        "dump",
+        "--note-path-template",
+        "{enex}/{created:%Y}/{created:%Y%m%d}-{title}.md",
+        "--attachments-path-template",
+        "{enex}/_resources/{created:%Y}/{created:%Y%m%d}-{title}",
+        str((enex_root / "notebook01.enex").absolute()),
+        str((enex_root / "notebook02.enex").absolute()),
+        str((enex_root / "notebook03.enex").absolute()),
+    ]
+    monkeypatch.chdir(tmp_path)
+    result = CliRunner().invoke(app, args)
+    assert result.exit_code == 0
+    assert result.output == ""
+
+    generated_files = sorted(p.relative_to(tmp_path) for p in tmp_path.glob("**/*") if p.is_file())
+    assert generated_files == [
+        Path("dump/notebook01/2023/20230709-The_title.md"),
+        Path("dump/notebook02/2023/20230709-Nested_lists.md"),
+        Path("dump/notebook03/2023/20230712-Fa_fa_fa.md"),
+        Path("dump/notebook03/_resources/2023/20230712-Fa_fa_fa/rckrll.png"),
+    ]
+
+
+def test_enex_folder(tmp_path, monkeypatch):
+    args = [
+        "--disk",
+        "--output-root",
+        "dump",
+        "--note-path-template",
+        "{enex}/{created:%Y}/{created:%Y%m%d}-{title}.md",
+        "--attachments-path-template",
+        "{enex}/_resources/{created:%Y}/{created:%Y%m%d}-{title}",
+        str(enex_root),
+    ]
+    monkeypatch.chdir(tmp_path)
+    result = CliRunner().invoke(app, args)
+    assert result.exit_code == 0
+    assert result.output == ""
+
+    generated_files = sorted(p.relative_to(tmp_path) for p in tmp_path.glob("**/*") if p.is_file())
+    assert generated_files == [
+        Path("dump/notebook01/2023/20230709-The_title.md"),
+        Path("dump/notebook02/2023/20230709-Nested_lists.md"),
+        Path("dump/notebook03/2023/20230712-Fa_fa_fa.md"),
+        Path("dump/notebook03/_resources/2023/20230712-Fa_fa_fa/rckrll.png"),
+        Path("dump/notebook03-2/2023/20230712-Fa_fa_fa.md"),
+        Path("dump/notebook03-2/_resources/2023/20230712-Fa_fa_fa/rckrll.png"),
+        Path("dump/notebook04/2023/20230717-Hello_world.md"),
+        Path("dump/notebook04/2023/20230717-Some_tasks.md"),
+    ]
