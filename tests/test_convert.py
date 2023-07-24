@@ -377,3 +377,15 @@ class TestConverter:
             """
         )
         assert generated_files[1].read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
+
+    def test_same_title(self, tmp_path):
+        path = (enex_root / "notebook05.enex").absolute()
+        converter = Converter()
+        converter.convert(enex=path, sink=FileSystemSink(note_path_template="{enex}/{created:%Y%m}/{title}.md"))
+
+        generated_files = sorted(p.relative_to(tmp_path) for p in tmp_path.glob("**/*") if p.is_file())
+        assert generated_files == [
+            Path("output/notebook05/202307/Same_name.md"),
+            Path("output/notebook05/202307/Same_name_1.md"),
+            Path("output/notebook05/202307/Same_name_2.md"),
+        ]

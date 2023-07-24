@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE en-export SYSTEM "http://xml.evernote.com/pub/evernote-export4.dtd">
+<en-export export-date="20230824T222126Z" application="Evernote" version="10.58.8">
+  <note>
+    <title>Same name</title>
+    <created>20230722T093314Z</created>
+    <updated>20230722T093437Z</updated>
+    <tag>Testing</tag>
+    <note-attributes>
+      <author>John Doe</author>
+    </note-attributes>
+    <content>
+      <![CDATA[<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd"><en-note><div>this is note one with the same name</div></en-note>      ]]>
+    </content>
+  </note>
+  <note>
+    <title>Same name</title>
+    <created>20230722T093328Z</created>
+    <updated>20230722T093429Z</updated>
+    <tag>Testing</tag>
+    <note-attributes>
+      <author>John Doe</author>
+    </note-attributes>
+    <content>
+      <![CDATA[<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd"><en-note><div>This is second note with the same name</div></en-note>      ]]>
+    </content>
+  </note>
+  <note>
+    <title>Same name</title>
+    <created>20230722T093344Z</created>
+    <updated>20230722T093421Z</updated>
+    <tag>Testing</tag>
+    <note-attributes>
+      <author>John Doe</author>
+    </note-attributes>
+    <content>
+      <![CDATA[<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd"><en-note><div>This is the 3rd note with the same name</div><div><br/></div><div><br/></div></en-note>      ]]>
+    </content>
+  </note>
+</en-export>

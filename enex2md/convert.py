@@ -9,7 +9,7 @@ import os.path
 import re
 import xml.etree.ElementTree
 from pathlib import Path
-from typing import Callable, Iterable, Iterator, List, Optional, Union
+from typing import Callable, Iterable, Iterator, List, Optional, Set, Union
 
 import html2text
 from bs4 import BeautifulSoup
@@ -226,6 +226,7 @@ class FileSystemSink(Sink):
         self.unsafe_regex = re.compile("[^0-9a-zA-Z _-]+" if self.allow_spaces_in_filenames else "[^0-9a-zA-Z_-]+")
         self.unsafe_replacer = unsafe_replacer
         self.max_filename_length = max_filename_length
+        self.written_files: Set[Path] = set()
 
     def _safe_name(self, text: str) -> str:
         """Strip unsafe characters from a string to produce a filename-safe string"""
@@ -233,20 +234,28 @@ class FileSystemSink(Sink):
         safe = safe.strip(self.unsafe_replacer)
         return safe[: self.max_filename_length]
 
-    def _build_path(self, template: str, note: ParsedNote) -> Path:
+    def _build_path(self, template: str, note: ParsedNote, must_not_exist: bool = True) -> Path:
         # TODO: smarter output files (e.g avoid conflicts, add timestamp/id, ...)
         # TODO: make sure to generate a non-existing path?
-        return self.root / template.format(
+        path = self.root / template.format(
             now=self.now,
             enex=self._safe_name(note.source_enex.stem) if note.source_enex else "enex",
             created=note.created,
             title=self._safe_name(note.title),
         )
+        if must_not_exist:
+            counter = 1
+            base_path = path
+            while path in self.written_files:
+                path = base_path.with_stem(f"{base_path.stem}_{counter}")
+                counter += 1
+        return path
 
     def store_attachment(self, note: ParsedNote, attachment: ParsedAttachment) -> Path:
         attachment_path = self._build_path(template=self.attachments_path_template, note=note) / attachment.file_name
         _log.info(f"Writing attachment {attachment} of note {note} to {attachment_path}")
         attachment_path.parent.mkdir(parents=True, exist_ok=True)
+        self.written_files.add(attachment_path)
         attachment_path.write_bytes(attachment.data)
         self.stats["attachments written"] += 1
 
@@ -260,6 +269,7 @@ class FileSystemSink(Sink):
         path = self._build_path(template=self.note_path_template, note=note)
         _log.info(f"Writing converted note {note} to {path}")
         path.parent.mkdir(parents=True, exist_ok=True)
+        self.written_files.add(path)
         with path.open("w", encoding="utf-8") as f:
             for line in lines:
                 f.write(line + "\n")

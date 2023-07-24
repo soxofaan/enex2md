@@ -183,4 +183,7 @@ def test_enex_folder(tmp_path, monkeypatch):
         Path("dump/notebook03-3/_resources/2023/20230712-Fa_fa_fa/untitled.png"),
         Path("dump/notebook04/2023/20230717-Hello_world.md"),
         Path("dump/notebook04/2023/20230717-Some_tasks.md"),
+        Path("dump/notebook05/2023/20230722-Same_name.md"),
+        Path("dump/notebook05/2023/20230722-Same_name_1.md"),
+        Path("dump/notebook05/2023/20230722-Same_name_2.md"),
     ]
