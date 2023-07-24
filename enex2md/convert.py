@@ -64,7 +64,6 @@ class EnexParser:
         root = None
         bytes_read = 0
         note_count = 0
-        # TODO: show progress of reading the XML file chunks.
         _log.info(f"Start parsing {path}")
         with Path(path).open("r", encoding="utf-8") as f:
             try:
@@ -148,7 +147,6 @@ class EnexParser:
 
     def extract_notes(self, enex_path: EnexPath) -> Iterator[ParsedNote]:
         """Extract all notes from given ENEX file."""
-        # TODO: progress bar or counter of extracted notes?
         for element in self.extract_note_elements(enex_path):
             yield self.parse_note_element(element, source_enex=enex_path)
 
@@ -553,7 +551,6 @@ class Converter:
         yield f"# {note.title}"
         yield ""
         if not self.front_matter:
-            # TODO: drop this old metadata style?
             yield "## Note metadata"
             yield ""
             yield from (f"- {k.title()}: {v}" for k, v in metadata.items())
