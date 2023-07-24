@@ -30,13 +30,34 @@ _log = logging.getLogger(__name__)
     help="Path template for attachment folder.",
     default=FileSystemSink.DEFAULT_ATTACHMENTS_PATH_TEMPLATE,
 )
+@click.option(
+    "--allow-spaces-in-filenames",
+    is_flag=True,
+    default=False,
+    help="Allow spaces in output file names.",
+)
+@click.option(
+    "--unsafe-replacer",
+    default="_",
+    help="Replace character for unsafe characters in file names.",
+    type=click.Choice(["", "_", "-"]),
+)
 @click.argument(
     "enex_sources",
     nargs=-1,
     required=True,
     type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True, path_type=Path),
 )
-def app(disk, front_matter, output_root, enex_sources, note_path_template, attachments_path_template):
+def app(
+    disk,
+    front_matter,
+    output_root,
+    enex_sources,
+    note_path_template,
+    attachments_path_template,
+    allow_spaces_in_filenames,
+    unsafe_replacer,
+):
     logging.basicConfig(level=logging.INFO)
     # TODO: get rid of this non-useful --disk option?
     if disk:
@@ -44,6 +65,8 @@ def app(disk, front_matter, output_root, enex_sources, note_path_template, attac
             root=output_root,
             note_path_template=note_path_template,
             attachments_path_template=attachments_path_template,
+            allow_spaces_in_filenames=allow_spaces_in_filenames,
+            unsafe_replacer=unsafe_replacer,
         )
     else:
         sink = StdOutSink()

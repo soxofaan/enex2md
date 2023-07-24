@@ -192,6 +192,9 @@ class FileSystemSink(Sink):
         root: Optional[Union[str, Path]] = None,
         note_path_template: Optional[str] = None,
         attachments_path_template: Optional[str] = None,
+        allow_spaces_in_filenames: bool = False,
+        unsafe_replacer: str = "_",
+        max_filename_length: int = 128,
     ):
         """
 
@@ -215,15 +218,16 @@ class FileSystemSink(Sink):
         _log.info(f"Using {note_path_template=!r} and {attachments_path_template=!r}")
         self.note_path_template = note_path_template
         self.attachments_path_template = attachments_path_template
-
+        self.allow_spaces_in_filenames = allow_spaces_in_filenames
+        self.unsafe_regex = re.compile("[^0-9a-zA-Z _-]+" if self.allow_spaces_in_filenames else "[^0-9a-zA-Z_-]+")
+        self.unsafe_replacer = unsafe_replacer
+        self.max_filename_length = max_filename_length
 
     def _safe_name(self, text: str) -> str:
         """Strip unsafe characters from a string to produce a filename-safe string"""
-        # TODO: limit length too?
-        # TODO: option to allow spaces
-        # TODO: option to replace with dash/underscore/empty
-        text = text.replace(" ", "_")  # TODO: remove this legacy conversion
-        return re.sub("[^0-9a-zA-Z_-]+", "", text)
+        safe = self.unsafe_regex.sub(self.unsafe_replacer, text)
+        safe = safe.strip(self.unsafe_replacer)
+        return safe[: self.max_filename_length]
 
     def _build_path(self, template: str, note: ParsedNote) -> Path:
         # TODO: smarter output files (e.g avoid conflicts, add timestamp/id, ...)

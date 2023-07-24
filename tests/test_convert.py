@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from enex2md.convert import Converter, EnexParser, FileSystemSink
+from enex2md.convert import Converter, EnexParser, FileSystemSink, ParsedNote
 
 enex_root = Path(__file__).parent / "enex"
 
@@ -63,10 +63,64 @@ class TestEnexParser:
         assert attachment.height == 32
 
 
-class TestConverter:
-    def test_basic(self, tmp_path, monkeypatch):
-        path = (enex_root / "notebook01.enex").absolute()
+class TestFileSystemSink:
+    @pytest.fixture(autouse=True)
+    def chdir_tmp_path(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
+
+    @pytest.mark.parametrize(
+        ["allow_spaces_in_filenames", "unsafe_replacer", "expected"],
+        [
+            (False, "", "2023/Thetitleofthethisnote123.md"),
+            (True, "", "2023/The title of thethis note 123.md"),
+            (False, "-", "2023/The-title-of-the-this-note-123.md"),
+            (False, "_", "2023/The_title_of_the_this_note_123.md"),
+            (True, "_", "2023/The title_ _of the_this note_ 123.md"),
+        ],
+    )
+    def test_safe_name_handling(self, tmp_path, allow_spaces_in_filenames, unsafe_replacer, expected):
+        sink = FileSystemSink(
+            root=tmp_path,
+            note_path_template="{created:%Y}/{title}.md",
+            allow_spaces_in_filenames=allow_spaces_in_filenames,
+            unsafe_replacer=unsafe_replacer,
+        )
+        note = ParsedNote(
+            title="The title, (of the/this note)! 123?",
+            content="foobar",
+            tags=[],
+            created=datetime.datetime(2023, 7, 24, 12, 34, 56),
+        )
+
+        sink.store_note(note, lines=["foobar"])
+        generated_files = [p.relative_to(tmp_path) for p in tmp_path.glob("**/*") if p.is_file()]
+        assert generated_files == [Path(expected)]
+
+    def test_filename_max_length(self, tmp_path):
+        sink = FileSystemSink(
+            root=tmp_path,
+            note_path_template="{created:%Y}/{created:%Y-%m-%d}-{title}.md",
+            max_filename_length=16,
+        )
+        note = ParsedNote(
+            title="The title, (of the/this note)! 123?",
+            content="foobar",
+            tags=[],
+            created=datetime.datetime(2023, 7, 24, 12, 34, 56),
+        )
+
+        sink.store_note(note, lines=["foobar"])
+        generated_files = [p.relative_to(tmp_path) for p in tmp_path.glob("**/*") if p.is_file()]
+        assert generated_files == [Path("2023/2023-07-24-The_title_of_the.md")]
+
+
+class TestConverter:
+    @pytest.fixture(autouse=True)
+    def chdir_tmp_path(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+
+    def test_basic(self, tmp_path):
+        path = (enex_root / "notebook01.enex").absolute()
         converter = Converter()
         converter.convert(enex=path, sink=FileSystemSink())
 
@@ -96,9 +150,8 @@ class TestConverter:
             """
         )
 
-    def test_frontmatter(self, tmp_path, monkeypatch):
+    def test_frontmatter(self, tmp_path):
         path = (enex_root / "notebook01.enex").absolute()
-        monkeypatch.chdir(tmp_path)
         converter = Converter(front_matter=True)
         converter.convert(enex=path, sink=FileSystemSink())
 
@@ -127,9 +180,8 @@ class TestConverter:
             """
         )
 
-    def test_nested_lists(self, tmp_path, monkeypatch):
+    def test_nested_lists(self, tmp_path):
         path = (enex_root / "notebook02.enex").absolute()
-        monkeypatch.chdir(tmp_path)
         converter = Converter()
         converter.convert(enex=path, sink=FileSystemSink())
 
@@ -181,9 +233,8 @@ class TestConverter:
             ("notebook03-3.enex", "untitled.png"),
         ],
     )
-    def test_attachment_default_paths(self, tmp_path, monkeypatch, enex, expected_filename):
+    def test_attachment_default_paths(self, tmp_path, enex, expected_filename):
         path = (enex_root / enex).absolute()
-        monkeypatch.chdir(tmp_path)
         converter = Converter()
         converter.convert(enex=path, sink=FileSystemSink())
 
@@ -214,9 +265,8 @@ class TestConverter:
         )
         assert png_path.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
 
-    def test_custom_paths_basic(self, tmp_path, monkeypatch):
+    def test_custom_paths_basic(self, tmp_path):
         path = (enex_root / "notebook01.enex").absolute()
-        monkeypatch.chdir(tmp_path)
         converter = Converter()
         converter.convert(
             enex=path,
@@ -253,9 +303,8 @@ class TestConverter:
             """
         )
 
-    def test_custom_paths_auto_attachments(self, tmp_path, monkeypatch):
+    def test_custom_paths_auto_attachments(self, tmp_path):
         path = (enex_root / "notebook03.enex").absolute()
-        monkeypatch.chdir(tmp_path)
         converter = Converter()
         converter.convert(
             enex=path,
@@ -291,9 +340,8 @@ class TestConverter:
         )
         assert generated_files[1].read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
 
-    def test_custom_paths(self, tmp_path, monkeypatch):
+    def test_custom_paths(self, tmp_path):
         path = (enex_root / "notebook03.enex").absolute()
-        monkeypatch.chdir(tmp_path)
         converter = Converter()
         converter.convert(
             enex=path,

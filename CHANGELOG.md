@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Allow specifying multiple ENEX input files or folders of ENEX files.
 - Support attachments without filename
 - Logging of parsing/conversion stats
+- Add options to fine-tune "safe" filenames: allow spaces? replacement character.
 
 ### Changed
 
