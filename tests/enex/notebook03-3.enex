@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE en-export SYSTEM "http://xml.evernote.com/pub/evernote-export4.dtd">
+<en-export export-date="20230812T201848Z" application="Evernote" version="10.58.8">
+  <note>
+    <title>Fa fa fa</title>
+    <created>20230712T201608Z</created>
+    <updated>20230712T201838Z</updated>
+    <note-attributes>
+      <author>John Doe</author>
+    </note-attributes>
+    <content>
+      <![CDATA[<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd"><en-note><div>lo lo lo</div><en-media hash="7e0fbb78891d9e94fe5f94d85cc858e0" type="image/png" style="--en-naturalWidth:64; --en-naturalHeight:32;"></en-media><div>la la la</div></en-note>      ]]>
+    </content>
+    <resource>
+      <data encoding="base64">
+iVBORw0KGgoAAAANSUhEUgAAAEAAAAAgCAMAAACVQ462AAAAXVBMVEXBste8udzSzv3MvuXLt9AbFQjk3v3bz+3a0/m7dXueTD58XlKrkqarZlQuJio7IQ25XllfRT6LUz26k5eZc3E6HRTSkHpUIAV3Lhh3ZWxpOSDWqK+nSBfVczjyRDIohWCzAAACkElEQVRIx23Ui3qqMBAE4FhCiJAACQER7Xn/xzyz2eBG67S1l4/5u1lR9YMYi/xQGopC
+8Kj19tz32+3Y9z1q/iOiKJdXMmB/rDVGAI7efp/oU/aYqP8VsDQB6hYKgBzuL78F2A8aoSkhqBKUsTSByQYsnIWv0vrx+3z20fsrcrwD3BXAEIDvGUC6rmHAo57jo5YT4LEGTJ6A+wI0AJ677/si5C0KoD4AzG8E6CgERAB9BRDMzAW/VUDdx0Un4AFECIQsPEHHABXfJih1pqzpeAmb973nERhQJ6AoBZByITrb8Q6u/yAwgACgoCt9BuyrankG
+i3p+FgD05xIemgU2LqRUN1IpFsE2DOjrTH3PAyBKgitkgtKn5B+bHF4jCTP3kaqPk74DhiN9ArQnYfdYIacGiqD4Bubt0ylKnYHN8wA1wH182qbsQNJIuHAlYAZwrwGcv+HkCcrr+R3QnI0GQNwYlnqCCxllB9UGLD7yU9jpfIDHY/Z9HkGP4xrT4pg4T4lTVIDcgkrnLGlbFucIcGoc2+mIw5AcCDYs1QtgTUlnAHDdH8e2DfeEERblxrZt12ma
+1hASEbyEF3D28wS5fj1wdQGSUncAyLTiYbwrhM5w+QooGj7e1rWdtkTA4mgAyTg6xTN8ArYz/OwPx22l/4cB7ik5p0IFjAxA4DBwLiH3HaZvKWFISxqGEFap05fTGVAClLYALSck9JF+beMhCADOJ4Aw0JZMy0L9NMe27wXQuuH+Cdjc5fo74NxAmefYz+vZx22t/gDmNL4C/YwcAuTUQHdG56w1EJBILyj/CbCgpK9LnABLCi/gulaAEsA2sgIB
+SoYwIOHIb2yhACOVCWGg+QtMAuSEmIF4wo6BS85/w1syXYtzWWgAAAAASUVORK5CYII=
+      </data>
+      <mime>image/png</mime>
+      <width>64</width>
+      <height>32</height>
+      <resource-attributes>
+        <file-name></file-name>
+        <source-url>en-cache://tokenKey%3D%22AuthToken%3AUser%3A5765584%22+34b6c401-be22-72ed-924d-5d644a2e499f+7e0fbb78891d9e94fe5f94d85cc858e0+https://www.evernote.com/shard/s53/res/c4a65415-103c-7903-d153-c85b2fbc4077</source-url>
+      </resource-attributes>
+    </resource>
+  </note>
+</en-export>

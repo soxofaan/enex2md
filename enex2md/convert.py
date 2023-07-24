@@ -70,7 +70,7 @@ class EnexParser:
 
     def _get_value(
         self, element: xml.etree.ElementTree.Element, path: str, convertor: Optional[Callable] = None, default=None
-    ):
+    ) -> Union[None, str, int, float, datetime.datetime]:
         """Get value from XML Element"""
         value = element.find(path)
         if value is None:
@@ -90,11 +90,19 @@ class EnexParser:
         # Parse data (base64 with newlines)
         data = re.sub(r"\s+", "", element.find("data").text)
         data = base64.b64decode(data)
+        file_name = self._get_value(element, "resource-attributes/file-name")
+        mime_type = self._get_value(element, "mime")
+        if not file_name:
+            file_name = "untitled"
+            if mime_type:
+                m = re.match(r"^\w+/(\w+)", mime_type)
+                if m:
+                    file_name += "." + m.group(1)
         return ParsedAttachment(
-            file_name=self._get_value(element, "resource-attributes/file-name"),
+            file_name=file_name,
             data=data,
             md5_hash=hashlib.md5(data).hexdigest(),
-            mime_type=self._get_value(element, "mime"),
+            mime_type=mime_type,
             width=self._get_value(element, "width", convertor=int),
             height=self._get_value(element, "height", convertor=int),
         )

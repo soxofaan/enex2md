@@ -121,8 +121,15 @@ def test_nested_lists(tmp_path, monkeypatch):
     )
 
 
-@pytest.mark.parametrize("enex", ["notebook03.enex", "notebook03-2.enex"])
-def test_attachment_default_paths(tmp_path, monkeypatch, enex):
+@pytest.mark.parametrize(
+    ["enex", "expected_filename"],
+    [
+        ("notebook03.enex", "rckrll.png"),
+        ("notebook03-2.enex", "rckrll.png"),
+        ("notebook03-3.enex", "untitled.png"),
+    ],
+)
+def test_attachment_default_paths(tmp_path, monkeypatch, enex, expected_filename):
     path = (enex_root / enex).absolute()
     monkeypatch.chdir(tmp_path)
     converter = Converter()
@@ -135,7 +142,7 @@ def test_attachment_default_paths(tmp_path, monkeypatch, enex):
     assert md_path.name == "Fa_fa_fa.md"
     md_content = md_path.read_text()
     assert md_content == textwrap.dedent(
-        """\
+        f"""\
         # Fa fa fa
 
         ## Note metadata
@@ -149,7 +156,7 @@ def test_attachment_default_paths(tmp_path, monkeypatch, enex):
 
         lo lo lo
 
-        ![rckrll.png](Fa_fa_fa_attachments/rckrll.png)
+        ![{expected_filename}](Fa_fa_fa_attachments/{expected_filename})
         la la la
         """
     )

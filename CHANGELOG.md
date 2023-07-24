@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added GitHub actions for running test suite and linting checks
 - Add "path template" options to customize output tree structure (both for notes and their attachments)
 - Allow specifying multiple ENEX input files or folders of ENEX files.
+- Support attachments without filename
 
 ### Changed
 
