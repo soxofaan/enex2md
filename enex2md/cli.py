@@ -42,6 +42,25 @@ _log = logging.getLogger(__name__)
     help="Replace character for unsafe characters in file names.",
     type=click.Choice(["", "_", "-"]),
 )
+@click.option(
+    "--root-condition",
+    default=FileSystemSink.ROOT_CONDITION.LEAVE_AS_IS,
+    help="Condition the root folder should be in: must be empty, or it doesn't matter?",
+    type=click.Choice([FileSystemSink.ROOT_CONDITION.LEAVE_AS_IS, FileSystemSink.ROOT_CONDITION.REQUIRE_EMPTY]),
+)
+@click.option(
+    "--on-existing-file",
+    help="what to do when a target file already exists: e.g. fail with exception, bump filename with an autoincrement counter until a new file name is found, ...",
+    default=FileSystemSink.ON_EXISTING_FILE.BUMP,
+    type=click.Choice(
+        [
+            FileSystemSink.ON_EXISTING_FILE.BUMP,
+            FileSystemSink.ON_EXISTING_FILE.FAIL,
+            FileSystemSink.ON_EXISTING_FILE.OVERWRITE,
+            FileSystemSink.ON_EXISTING_FILE.WARN,
+        ]
+    ),
+)
 @click.argument(
     "enex_sources",
     nargs=-1,
@@ -57,6 +76,8 @@ def app(
     attachments_path_template,
     allow_spaces_in_filenames,
     unsafe_replacer,
+    root_condition,
+    on_existing_file,
 ):
     logging.basicConfig(level=logging.INFO)
     # TODO: get rid of this non-useful --disk option?
@@ -67,6 +88,8 @@ def app(
             attachments_path_template=attachments_path_template,
             allow_spaces_in_filenames=allow_spaces_in_filenames,
             unsafe_replacer=unsafe_replacer,
+            root_condition=root_condition,
+            on_existing_file=on_existing_file,
         )
     else:
         sink = StdOutSink()

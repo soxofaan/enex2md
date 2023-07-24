@@ -187,6 +187,17 @@ class FileSystemSink(Sink):
     DEFAULT_NOTE_PATH_TEMPLATE = "{now:%Y%m%d_%H%M%S}/{enex}/{title}.md"
     DEFAULT_ATTACHMENTS_PATH_TEMPLATE = "{now:%Y%m%d_%H%M%S}/{enex}/{title}_attachments/"
 
+    class ROOT_CONDITION:
+        LEAVE_AS_IS = "leave-as-is"
+        REQUIRE_EMPTY = "require-empty"
+        # TODO: auto clear option?
+
+    class ON_EXISTING_FILE:
+        BUMP = "bump"
+        FAIL = "fail"
+        OVERWRITE = "overwrite"
+        WARN = "warn"
+
     def __init__(
         self,
         root: Optional[Union[str, Path]] = None,
@@ -195,6 +206,8 @@ class FileSystemSink(Sink):
         allow_spaces_in_filenames: bool = False,
         unsafe_replacer: str = "_",
         max_filename_length: int = 128,
+        root_condition: str = ROOT_CONDITION.LEAVE_AS_IS,
+        on_existing_file: str = ON_EXISTING_FILE.BUMP,
     ):
         """
 
@@ -204,11 +217,13 @@ class FileSystemSink(Sink):
         :param allow_spaces_in_filenames: allow spaces when deriving file name from note title
         :param unsafe_replacer: replacement character for unsafe strings when deriving file name from note title
         :param max_filename_length: maximum length of note title based file name part
+        :param root_condition: condition the root folder should be in: e.g. empty if it exists
+        :param on_existing_file: what to do when a target file already exists: e.g. fail with exception,
+            bump filename with an autoincrement counter until a new file name is found, ...
         """
         super().__init__()
-        # TODO: option to empty root first? Or fail when root is not empty?
-        # TODO: option to avoid overwriting existing files?
         self.root = Path(root or self.DEFAULT_OUTPUT_ROOT)
+
         # TODO: option to use local timezone iso UTC?
         self.now = datetime.datetime.now(tz=datetime.timezone.utc)
 
@@ -226,7 +241,22 @@ class FileSystemSink(Sink):
         self.unsafe_regex = re.compile("[^0-9a-zA-Z _-]+" if self.allow_spaces_in_filenames else "[^0-9a-zA-Z_-]+")
         self.unsafe_replacer = unsafe_replacer
         self.max_filename_length = max_filename_length
+
+        self.root_condition = root_condition
+        self._check_root_condition()
         self.written_files: Set[Path] = set()
+        self.on_existing_file = on_existing_file
+
+    def _check_root_condition(self):
+        if self.root.exists():
+            assert self.root.is_dir(), f"Must be a folder: {self.root}"
+            item_count = sum(1 for _ in self.root.iterdir())
+            if self.root_condition == self.ROOT_CONDITION.LEAVE_AS_IS:
+                pass
+            elif self.root_condition == self.ROOT_CONDITION.REQUIRE_EMPTY:
+                assert item_count == 0, f"Must be an empty folder but found {item_count} items: {self.root}"
+            else:
+                raise ValueError(self.root_condition)
 
     def _safe_name(self, text: str) -> str:
         """Strip unsafe characters from a string to produce a filename-safe string"""
@@ -235,20 +265,34 @@ class FileSystemSink(Sink):
         return safe[: self.max_filename_length]
 
     def _build_path(self, template: str, note: ParsedNote, must_not_exist: bool = True) -> Path:
-        # TODO: smarter output files (e.g avoid conflicts, add timestamp/id, ...)
-        # TODO: make sure to generate a non-existing path?
         path = self.root / template.format(
             now=self.now,
             enex=self._safe_name(note.source_enex.stem) if note.source_enex else "enex",
             created=note.created,
             title=self._safe_name(note.title),
         )
-        if must_not_exist:
-            counter = 1
-            base_path = path
-            while path in self.written_files:
-                path = base_path.with_stem(f"{base_path.stem}_{counter}")
-                counter += 1
+        path = self._bump_while(path, condition=lambda p: p in self.written_files)
+        if path.exists():
+            if self.on_existing_file == self.ON_EXISTING_FILE.BUMP:
+                path = self._bump_while(path, condition=lambda p: p.exists())
+            elif self.on_existing_file == self.ON_EXISTING_FILE.FAIL:
+                raise FileExistsError(f"Already exists: {path}")
+            elif self.on_existing_file == self.ON_EXISTING_FILE.OVERWRITE:
+                pass
+            elif self.on_existing_file == self.ON_EXISTING_FILE.WARN:
+                _log.warning(f"Overwriting existing file {path}")
+            else:
+                raise ValueError(self.on_existing_file)
+
+        return path
+
+    def _bump_while(self, path: Path, condition) -> Path:
+        """Bump a trailing counter in path while certain condition is true."""
+        base_path = path
+        counter = 1
+        while condition(path):
+            path = base_path.with_stem(f"{base_path.stem}_{counter}")
+            counter += 1
         return path
 
     def store_attachment(self, note: ParsedNote, attachment: ParsedAttachment) -> Path:

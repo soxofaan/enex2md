@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support attachments without filename
 - Logging of parsing/conversion stats
 - Add options to fine-tune "safe" filenames: allow spaces? replacement character.
+- Add options to fine-tune handling of non-empty output root and existing target files
 
 ### Changed
 

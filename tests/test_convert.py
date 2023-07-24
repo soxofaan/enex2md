@@ -1,6 +1,7 @@
 import datetime
 import textwrap
 from pathlib import Path
+from typing import List
 
 import pytest
 
@@ -63,10 +64,27 @@ class TestEnexParser:
         assert attachment.height == 32
 
 
+def _list_all_files(root, with_size: bool = False) -> List[Path]:
+    files = (p for p in root.glob("**/*") if p.is_file())
+    if with_size:
+        return sorted((p.relative_to(root), p.stat().st_size) for p in files)
+    else:
+        return sorted(p.relative_to(root) for p in files)
+
+
 class TestFileSystemSink:
     @pytest.fixture(autouse=True)
     def chdir_tmp_path(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
+
+    @pytest.fixture
+    def note(self) -> ParsedNote:
+        return ParsedNote(
+            title="Hello world",
+            content="Hello, world!",
+            tags=[],
+            created=datetime.datetime(2023, 7, 24, 12, 34, 56),
+        )
 
     @pytest.mark.parametrize(
         ["allow_spaces_in_filenames", "unsafe_replacer", "expected"],
@@ -93,8 +111,7 @@ class TestFileSystemSink:
         )
 
         sink.store_note(note, lines=["foobar"])
-        generated_files = [p.relative_to(tmp_path) for p in tmp_path.glob("**/*") if p.is_file()]
-        assert generated_files == [Path(expected)]
+        assert _list_all_files(tmp_path) == [Path(expected)]
 
     def test_filename_max_length(self, tmp_path):
         sink = FileSystemSink(
@@ -110,8 +127,95 @@ class TestFileSystemSink:
         )
 
         sink.store_note(note, lines=["foobar"])
-        generated_files = [p.relative_to(tmp_path) for p in tmp_path.glob("**/*") if p.is_file()]
-        assert generated_files == [Path("2023/2023-07-24-The_title_of_the.md")]
+        assert _list_all_files(tmp_path) == [Path("2023/2023-07-24-The_title_of_the.md")]
+
+    def test_root_condition_require_empty(self, tmp_path):
+        # Does not exist (yet)
+        _ = FileSystemSink(root=tmp_path / "foo", root_condition=FileSystemSink.ROOT_CONDITION.REQUIRE_EMPTY)
+
+        # Exist, but  empty
+        (tmp_path / "foo").mkdir()
+        _ = FileSystemSink(root=tmp_path / "foo", root_condition=FileSystemSink.ROOT_CONDITION.REQUIRE_EMPTY)
+
+        # Not empty
+        (tmp_path / "foo" / "hello.txt").touch()
+        with pytest.raises(AssertionError, match="Must be an empty folder but found 1 item"):
+            _ = FileSystemSink(root=tmp_path / "foo", root_condition=FileSystemSink.ROOT_CONDITION.REQUIRE_EMPTY)
+
+    def test_on_existing_file_bump(self, tmp_path, note):
+        (tmp_path / "Hello_world.md").touch()
+        (tmp_path / "Hello_world_1.md").touch()
+        assert _list_all_files(tmp_path) == [
+            Path("Hello_world.md"),
+            Path("Hello_world_1.md"),
+        ]
+
+        sink = FileSystemSink(
+            root=tmp_path,
+            note_path_template="{title}.md",
+            on_existing_file=FileSystemSink.ON_EXISTING_FILE.BUMP,
+        )
+        sink.store_note(note, lines=note.content.split())
+        assert _list_all_files(tmp_path) == [
+            Path("Hello_world.md"),
+            Path("Hello_world_1.md"),
+            Path("Hello_world_2.md"),
+        ]
+
+    def test_on_existing_file_fail(self, tmp_path, note):
+        (tmp_path / "Hello_world.md").touch()
+        (tmp_path / "Hello_world_1.md").touch()
+
+        sink = FileSystemSink(
+            root=tmp_path,
+            note_path_template="{title}.md",
+            on_existing_file=FileSystemSink.ON_EXISTING_FILE.FAIL,
+        )
+        with pytest.raises(FileExistsError, match=r"Already exists.*Hello_world\.md"):
+            sink.store_note(note, lines=note.content.split())
+
+    def test_on_existing_file_overwrite(self, tmp_path, note):
+        (tmp_path / "Hello_world.md").touch()
+        (tmp_path / "Hello_world_1.md").touch()
+        assert _list_all_files(tmp_path) == [
+            Path("Hello_world.md"),
+            Path("Hello_world_1.md"),
+        ]
+
+        sink = FileSystemSink(
+            root=tmp_path,
+            note_path_template="{title}.md",
+            on_existing_file=FileSystemSink.ON_EXISTING_FILE.OVERWRITE,
+        )
+        sink.store_note(note, lines=note.content.split())
+        assert _list_all_files(tmp_path, with_size=True) == [
+            (Path("Hello_world.md"), pytest.approx(14, abs=5)),
+            (Path("Hello_world_1.md"), 0),
+        ]
+
+    def test_on_existing_file_warn(self, tmp_path, note, caplog):
+        (tmp_path / "Hello_world.md").touch()
+        (tmp_path / "Hello_world_1.md").touch()
+        assert _list_all_files(tmp_path) == [
+            Path("Hello_world.md"),
+            Path("Hello_world_1.md"),
+        ]
+
+        sink = FileSystemSink(
+            root=tmp_path,
+            note_path_template="{title}.md",
+            on_existing_file=FileSystemSink.ON_EXISTING_FILE.WARN,
+        )
+
+        assert caplog.text == ""
+
+        sink.store_note(note, lines=note.content.split())
+        assert _list_all_files(tmp_path, with_size=True) == [
+            (Path("Hello_world.md"), pytest.approx(14, abs=5)),
+            (Path("Hello_world_1.md"), 0),
+        ]
+
+        assert "Overwriting existing file" in caplog.text
 
 
 class TestConverter:
@@ -124,7 +228,7 @@ class TestConverter:
         converter = Converter()
         converter.convert(enex=path, sink=FileSystemSink())
 
-        generated_files = [p.relative_to(tmp_path) for p in tmp_path.glob("**/*") if p.is_file()]
+        generated_files = _list_all_files(tmp_path)
         assert len(generated_files) == 1
         md_path = generated_files[0]
         assert md_path.name == "The_title.md"
@@ -155,7 +259,7 @@ class TestConverter:
         converter = Converter(front_matter=True)
         converter.convert(enex=path, sink=FileSystemSink())
 
-        generated_files = [p.relative_to(tmp_path) for p in tmp_path.glob("**/*") if p.is_file()]
+        generated_files = _list_all_files(tmp_path)
         assert len(generated_files) == 1
         md_path = generated_files[0]
         assert md_path.name == "The_title.md"
@@ -185,7 +289,7 @@ class TestConverter:
         converter = Converter()
         converter.convert(enex=path, sink=FileSystemSink())
 
-        generated_files = [p.relative_to(tmp_path) for p in tmp_path.glob("**/*") if p.is_file()]
+        generated_files = _list_all_files(tmp_path)
         assert len(generated_files) == 1
         md_path = generated_files[0]
         assert md_path.name == "Nested_lists.md"
@@ -238,7 +342,7 @@ class TestConverter:
         converter = Converter()
         converter.convert(enex=path, sink=FileSystemSink())
 
-        generated_files = [p.relative_to(tmp_path) for p in tmp_path.glob("**/*") if p.is_file()]
+        generated_files = _list_all_files(tmp_path)
         assert len(generated_files) == 2
         (md_path,) = [p for p in generated_files if p.suffix == ".md"]
         (png_path,) = [p for p in generated_files if p.suffix == ".png"]
@@ -276,7 +380,7 @@ class TestConverter:
             ),
         )
 
-        generated_files = [p.relative_to(tmp_path) for p in tmp_path.glob("**/*") if p.is_file()]
+        generated_files = _list_all_files(tmp_path)
         assert generated_files == [
             Path("go/here/notebook01/2023/20230709-The_title.md"),
         ]
@@ -314,7 +418,7 @@ class TestConverter:
             ),
         )
 
-        generated_files = sorted(p.relative_to(tmp_path) for p in tmp_path.glob("**/*") if p.is_file())
+        generated_files = _list_all_files(tmp_path)
         assert generated_files == [
             Path("dump/notebook03/2023/20230712-Fa_fa_fa.md"),
             Path("dump/notebook03/2023/20230712-Fa_fa_fa_attachments/rckrll.png"),
@@ -352,7 +456,7 @@ class TestConverter:
             ),
         )
 
-        generated_files = sorted(p.relative_to(tmp_path) for p in tmp_path.glob("**/*") if p.is_file())
+        generated_files = _list_all_files(tmp_path)
         assert generated_files == [
             Path("dump/notebook03/2023/20230712-Fa_fa_fa.md"),
             Path("dump/notebook03/_resources/2023/20230712-Fa_fa_fa/rckrll.png"),
@@ -383,9 +487,26 @@ class TestConverter:
         converter = Converter()
         converter.convert(enex=path, sink=FileSystemSink(note_path_template="{enex}/{created:%Y%m}/{title}.md"))
 
-        generated_files = sorted(p.relative_to(tmp_path) for p in tmp_path.glob("**/*") if p.is_file())
+        generated_files = _list_all_files(tmp_path)
         assert generated_files == [
             Path("output/notebook05/202307/Same_name.md"),
             Path("output/notebook05/202307/Same_name_1.md"),
             Path("output/notebook05/202307/Same_name_2.md"),
+        ]
+
+    def test_same_title_preexisting_files(self, tmp_path):
+        (tmp_path / "Same_name.md").touch()
+        (tmp_path / "Same_name_1.md").touch()
+        (tmp_path / "Same_name_3.md").touch()
+        path = (enex_root / "notebook05.enex").absolute()
+        converter = Converter()
+        converter.convert(enex=path, sink=FileSystemSink(root=tmp_path, note_path_template="{title}.md"))
+
+        assert _list_all_files(tmp_path, with_size=True) == [
+            (Path("Same_name.md"), 0),
+            (Path("Same_name_1.md"), 0),
+            (Path("Same_name_2.md"), pytest.approx(210, abs=20)),
+            (Path("Same_name_3.md"), 0),
+            (Path("Same_name_4.md"), pytest.approx(210, abs=20)),
+            (Path("Same_name_5.md"), pytest.approx(210, abs=20)),
         ]
