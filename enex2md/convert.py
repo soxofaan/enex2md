@@ -4,6 +4,7 @@ import datetime
 import hashlib
 import itertools
 import logging
+import os.path
 import re
 import xml.etree.ElementTree
 from pathlib import Path
@@ -13,6 +14,9 @@ import html2text
 from bs4 import BeautifulSoup
 
 _log = logging.getLogger(__name__)
+
+# Type annotation aliasses
+EnexPath = Union[str, Path]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -35,6 +39,7 @@ class ParsedNote:
     author: Optional[str] = None
     source_url: Optional[str] = None
     attachments: Optional[List[ParsedAttachment]] = None
+    source_enex: Optional[Path] = None
 
 
 class EnexParser:
@@ -44,7 +49,7 @@ class EnexParser:
         self.chunk_size = chunk_size
         self.handle_attachments = handle_attachments
 
-    def extract_note_elements(self, path: Union[str, Path]) -> Iterator[xml.etree.ElementTree.Element]:
+    def extract_note_elements(self, path: EnexPath) -> Iterator[xml.etree.ElementTree.Element]:
         """Extract notes from given ENEX (XML) file as XML Elements"""
         # Inspired by https://github.com/dogsheep/evernote-to-sqlite
         parser = xml.etree.ElementTree.XMLPullParser(["start", "end"])
@@ -94,7 +99,9 @@ class EnexParser:
             height=self._get_value(element, "height", convertor=int),
         )
 
-    def parse_note_element(self, element: xml.etree.ElementTree.Element) -> ParsedNote:
+    def parse_note_element(
+        self, element: xml.etree.ElementTree.Element, source_enex: Optional[EnexPath] = None
+    ) -> ParsedNote:
         """Parse a note XML element."""
         if self.handle_attachments:
             attachments = [self.parse_attachment_element(e) for e in element.iterfind("resource")]
@@ -109,13 +116,14 @@ class EnexParser:
             author=(self._get_value(element, "note-attributes/author")),
             source_url=(self._get_value(element, "note-attributes/source-url")),
             attachments=attachments,
+            source_enex=Path(source_enex) if source_enex else None,
         )
 
-    def extract_notes(self, enex_path: Union[str, Path]) -> Iterator[ParsedNote]:
+    def extract_notes(self, enex_path: EnexPath) -> Iterator[ParsedNote]:
         """Extract all notes from given ENEX file."""
         # TODO: progress bar or counter of extracted notes?
         for element in self.extract_note_elements(enex_path):
-            yield self.parse_note_element(element)
+            yield self.parse_note_element(element, source_enex=enex_path)
 
 
 class Sink:
@@ -145,48 +153,75 @@ class StdOutSink(Sink):
 class FileSystemSink(Sink):
     """Write Markdown files"""
 
-    def __init__(self, root: Union[str, Path]):
+    DEFAULT_OUTPUT_ROOT = "output"
+    DEFAULT_NOTE_PATH_TEMPLATE = "{now:%Y%m%d_%H%M%S}/{enex}/{title}.md"
+    DEFAULT_ATTACHMENTS_PATH_TEMPLATE = "{now:%Y%m%d_%H%M%S}/{enex}/{title}_attachments/"
+
+    def __init__(
+        self,
+        root: Optional[Union[str, Path]] = None,
+        note_path_template: Optional[str] = None,
+        attachments_path_template: Optional[str] = None,
+    ):
+        """
+
+        :param note_path_template: template for path of target Markdown files
+        :param attachments_path_template: path template for folder to store attachments to
+        """
         # TODO: option to empty root first? Or fail when root is not empty?
         # TODO: option to avoid overwriting existing files?
-        self.root = Path(root)
+        self.root = Path(root or self.DEFAULT_OUTPUT_ROOT)
+        # TODO: option to use local timezone iso UTC?
+        self.now = datetime.datetime.now(tz=datetime.timezone.utc)
 
-    @classmethod
-    def legacy_root_from_enex(cls, enex_path: Union[str, Path]) -> "FileSystemSink":
-        """
-        Legacy mode: create output folder automatically from ENEX filename and timestamp
-        """
-        # TODO: eliminate this legacy approach
-        enex_path = Path(enex_path)
-        subfolder_name = _make_safe_name(enex_path.stem)
-        root = Path("output") / datetime.datetime.now().strftime("%Y%m%d_%H%M%S") / subfolder_name
-        root.mkdir(parents=True, exist_ok=True)
-        return cls(root=root)
+        if note_path_template is None:
+            note_path_template = self.DEFAULT_NOTE_PATH_TEMPLATE
+            attachments_path_template = self.DEFAULT_ATTACHMENTS_PATH_TEMPLATE
+        elif attachments_path_template is None:
+            # Best effort guess based on note_path_template
+            attachments_path_template = re.sub(r"(?:\.md)?$", "_attachments", note_path_template, count=1)
 
-    def _note_path(self, note: ParsedNote) -> Path:
+        _log.info(f"Using {note_path_template=!r} and {attachments_path_template=!r}")
+        self.note_path_template = note_path_template
+        self.attachments_path_template = attachments_path_template
+
+    def _safe_name(self, text: str) -> str:
+        """Strip unsafe characters from a string to produce a filename-safe string"""
+        # TODO: limit length too?
+        # TODO: option to allow spaces
+        # TODO: option to replace with dash/underscore/empty
+        text = text.replace(" ", "_")  # TODO: remove this legacy conversion
+        return re.sub("[^0-9a-zA-Z_-]+", "", text)
+
+    def _build_path(self, template: str, note: ParsedNote) -> Path:
         # TODO: smarter output files (e.g avoid conflicts, add timestamp/id, ...)
-        return self.root / (_make_safe_name(note.title) + ".md")
+        # TODO: make sure to generate a non-existing path?
+        return self.root / template.format(
+            now=self.now,
+            enex=self._safe_name(note.source_enex.stem) if note.source_enex else "enex",
+            created=note.created,
+            title=self._safe_name(note.title),
+        )
 
-    def store_attachment(self, note: ParsedNote, attachment: ParsedAttachment) -> Optional[Path]:
-        note_path = self._note_path(note)
-        path = self.root / (_make_safe_name(note.title) + "_attachments") / attachment.file_name
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(attachment.data)
-        return path.relative_to(note_path.parent)
+    def store_attachment(self, note: ParsedNote, attachment: ParsedAttachment) -> Path:
+        attachment_path = self._build_path(template=self.attachments_path_template, note=note) / attachment.file_name
+        _log.info(f"Writing attachment {attachment} of note {note} to {attachment_path}")
+        attachment_path.parent.mkdir(parents=True, exist_ok=True)
+        attachment_path.write_bytes(attachment.data)
+
+        # Figure out path relative to note path.
+        # Pathlib's `Path.relative_to` only support "walking up" starting in Python 3.12,
+        # so we use old-school `os.path.relpath` here instead.
+        note_path = self._build_path(template=self.note_path_template, note=note)
+        return Path(os.path.relpath(attachment_path, start=note_path.parent))
 
     def store_note(self, note: ParsedNote, lines: Iterable[str]):
-        path = self._note_path(note)
+        path = self._build_path(template=self.note_path_template, note=note)
+        _log.info(f"Writing converted note {note} to {path}")
+        path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("w", encoding="utf-8") as f:
             for line in lines:
                 f.write(line + "\n")
-
-
-def _make_safe_name(input_string: str, counter=0) -> str:
-    better = input_string.replace(" ", "_")
-    better = "".join([c for c in better if re.match(r"\w", c)])
-    # For handling duplicates: If counter > 0, append to file/folder name.
-    if counter > 0:
-        better = f"{better}_{counter}"
-    return better
 
 
 class Converter:
@@ -195,9 +230,10 @@ class Converter:
     def __init__(self, front_matter: bool = False):
         self.front_matter = front_matter
 
-    def convert(self, enex: Union[str, Path], sink: Sink):
+    def convert(self, enex: EnexPath, sink: Sink):
         parser = EnexParser()
         for note in parser.extract_notes(enex):
+            _log.info(f"Converting {note.title!r}")
             self.export_note(note, sink)
 
     def export_note(self, note: ParsedNote, sink: Sink):
