@@ -28,6 +28,9 @@ class ParsedAttachment:
     width: Optional[int] = None
     height: Optional[int] = None
 
+    def __repr__(self):
+        return f"{type(self).__name__}({self.file_name!r})"
+
 
 @dataclasses.dataclass
 class ParsedNote:
@@ -40,6 +43,9 @@ class ParsedNote:
     source_url: Optional[str] = None
     attachments: Optional[List[ParsedAttachment]] = None
     source_enex: Optional[Path] = None
+
+    def __repr__(self):
+        return f"{type(self).__name__}({self.title!r})"
 
 
 class EnexParser:
@@ -54,19 +60,27 @@ class EnexParser:
         # Inspired by https://github.com/dogsheep/evernote-to-sqlite
         parser = xml.etree.ElementTree.XMLPullParser(["start", "end"])
         root = None
+        bytes_read = 0
+        note_count = 0
         # TODO: show progress of reading the XML file chunks.
+        _log.info(f"Start parsing {path}")
         with Path(path).open("r", encoding="utf-8") as f:
-            while True:
-                chunk = f.read(self.chunk_size)
-                if not chunk:
-                    break
-                parser.feed(chunk)
-                for event, el in parser.read_events():
-                    if event == "start" and root is None:
-                        root = el
-                    if event == "end" and el.tag == "note":
-                        yield el
-                    root.clear()
+            try:
+                while True:
+                    chunk = f.read(self.chunk_size)
+                    if not chunk:
+                        break
+                    bytes_read += len(chunk)
+                    parser.feed(chunk)
+                    for event, el in parser.read_events():
+                        if event == "start" and root is None:
+                            root = el
+                        if event == "end" and el.tag == "note":
+                            note_count += 1
+                            yield el
+                        root.clear()
+            finally:
+                _log.info(f"Stop parsing {path}, read {bytes_read} bytes, parsed {note_count} notes.")
 
     def _get_value(
         self, element: xml.etree.ElementTree.Element, path: str, convertor: Optional[Callable] = None, default=None

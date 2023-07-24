@@ -52,7 +52,7 @@ def app(disk, front_matter, output_root, enex_sources, note_path_template, attac
     converter = Converter(front_matter=front_matter)
 
     for enex_path in collect_enex_paths(enex_sources):
-        logging.info(f"Processing input file {enex_path}.")
+        _log.info(f"Processing input file {enex_path}.")
         converter.convert(enex=enex_path, sink=sink)
 
 
