@@ -152,3 +152,7 @@ venv/
 # Ignore data
 data/
 output/
+
+
+tmp/
+tmp*
