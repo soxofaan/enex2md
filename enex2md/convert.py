@@ -262,7 +262,7 @@ class FileSystemSink(Sink):
         safe = safe.strip(self.unsafe_replacer)
         return safe[: self.max_filename_length]
 
-    def _build_path(self, template: str, note: ParsedNote, must_not_exist: bool = True) -> Path:
+    def _build_path(self, template: str, note: ParsedNote) -> Path:
         path = self.root / template.format(
             now=self.now,
             enex=self._safe_name(note.source_enex.stem) if note.source_enex else "enex",
