@@ -198,8 +198,12 @@ class FileSystemSink(Sink):
     ):
         """
 
+        :param root: root folder for note and attachment output
         :param note_path_template: template for path of target Markdown files
         :param attachments_path_template: path template for folder to store attachments to
+        :param allow_spaces_in_filenames: allow spaces when deriving file name from note title
+        :param unsafe_replacer: replacement character for unsafe strings when deriving file name from note title
+        :param max_filename_length: maximum length of note title based file name part
         """
         super().__init__()
         # TODO: option to empty root first? Or fail when root is not empty?
