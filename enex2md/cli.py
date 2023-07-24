@@ -6,7 +6,7 @@ from typing import Iterable, Iterator
 
 import click
 
-from enex2md.convert import Converter, FileSystemSink, StdOutSink
+from enex2md.convert import Converter, EnexParser, FileSystemSink, StdOutSink
 
 _log = logging.getLogger(__name__)
 
@@ -49,11 +49,14 @@ def app(disk, front_matter, output_root, enex_sources, note_path_template, attac
         sink = StdOutSink()
     _log.info(f"Using {sink=}")
 
+    parser = EnexParser()
     converter = Converter(front_matter=front_matter)
 
     for enex_path in collect_enex_paths(enex_sources):
         _log.info(f"Processing input file {enex_path}.")
-        converter.convert(enex=enex_path, sink=sink)
+        converter.convert(enex=enex_path, sink=sink, parser=parser)
+
+    _log.info(f"Stats: {parser.stats=} {converter.stats=} {sink.stats=}")
 
 
 def collect_enex_paths(enex_sources: Iterable[Path]) -> Iterator[Path]:

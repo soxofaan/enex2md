@@ -1,4 +1,5 @@
 import base64
+import collections
 import dataclasses
 import datetime
 import hashlib
@@ -54,6 +55,7 @@ class EnexParser:
     def __init__(self, chunk_size: int = 1024 * 1024, handle_attachments: bool = True):
         self.chunk_size = chunk_size
         self.handle_attachments = handle_attachments
+        self.stats = collections.Counter()
 
     def extract_note_elements(self, path: EnexPath) -> Iterator[xml.etree.ElementTree.Element]:
         """Extract notes from given ENEX (XML) file as XML Elements"""
@@ -71,6 +73,7 @@ class EnexParser:
                     if not chunk:
                         break
                     bytes_read += len(chunk)
+                    self.stats["bytes read"] += len(chunk)
                     parser.feed(chunk)
                     for event, el in parser.read_events():
                         if event == "start" and root is None:
@@ -80,7 +83,7 @@ class EnexParser:
                             yield el
                         root.clear()
             finally:
-                _log.info(f"Stop parsing {path}, read {bytes_read} bytes, parsed {note_count} notes.")
+                _log.info(f"Stop parsing {path}, bytes read: {bytes_read} bytes, notes prodiced: {note_count}.")
 
     def _get_value(
         self, element: xml.etree.ElementTree.Element, path: str, convertor: Optional[Callable] = None, default=None
@@ -112,6 +115,7 @@ class EnexParser:
                 m = re.match(r"^\w+/(\w+)", mime_type)
                 if m:
                     file_name += "." + m.group(1)
+        self.stats["attachments parsed"] += 1
         return ParsedAttachment(
             file_name=file_name,
             data=data,
@@ -129,6 +133,7 @@ class EnexParser:
             attachments = [self.parse_attachment_element(e) for e in element.iterfind("resource")]
         else:
             attachments = None
+        self.stats["notes parsed"] += 1
         return ParsedNote(
             title=(self._get_value(element, "title")),
             content=(self._get_value(element, "content")),
@@ -152,6 +157,9 @@ class Sink:
     """Target to write markdown to"""
 
     handle_attachments = True
+
+    def __init__(self):
+        self.stats = collections.Counter()
 
     def store_attachment(self, note: ParsedNote, attachment: ParsedAttachment) -> Optional[Path]:
         raise NotImplementedError
@@ -190,6 +198,7 @@ class FileSystemSink(Sink):
         :param note_path_template: template for path of target Markdown files
         :param attachments_path_template: path template for folder to store attachments to
         """
+        super().__init__()
         # TODO: option to empty root first? Or fail when root is not empty?
         # TODO: option to avoid overwriting existing files?
         self.root = Path(root or self.DEFAULT_OUTPUT_ROOT)
@@ -206,6 +215,7 @@ class FileSystemSink(Sink):
         _log.info(f"Using {note_path_template=!r} and {attachments_path_template=!r}")
         self.note_path_template = note_path_template
         self.attachments_path_template = attachments_path_template
+
 
     def _safe_name(self, text: str) -> str:
         """Strip unsafe characters from a string to produce a filename-safe string"""
@@ -230,6 +240,7 @@ class FileSystemSink(Sink):
         _log.info(f"Writing attachment {attachment} of note {note} to {attachment_path}")
         attachment_path.parent.mkdir(parents=True, exist_ok=True)
         attachment_path.write_bytes(attachment.data)
+        self.stats["attachments written"] += 1
 
         # Figure out path relative to note path.
         # Pathlib's `Path.relative_to` only support "walking up" starting in Python 3.12,
@@ -244,6 +255,7 @@ class FileSystemSink(Sink):
         with path.open("w", encoding="utf-8") as f:
             for line in lines:
                 f.write(line + "\n")
+        self.stats["notes written"] += 1
 
 
 class Converter:
@@ -251,9 +263,10 @@ class Converter:
 
     def __init__(self, front_matter: bool = False):
         self.front_matter = front_matter
+        self.stats = collections.Counter()
 
-    def convert(self, enex: EnexPath, sink: Sink):
-        parser = EnexParser()
+    def convert(self, enex: EnexPath, sink: Sink, parser: Optional[EnexParser] = None):
+        parser = parser or EnexParser()
         for note in parser.extract_notes(enex):
             _log.info(f"Converting {note.title!r}")
             self.export_note(note, sink)
@@ -301,6 +314,8 @@ class Converter:
                 [content],
             ),
         )
+
+        self.stats["notes exported"] += 1
 
     def _handle_codeblocks(self, text: str) -> str:
         """ We would need to be able to recognise these (linebreaks added for brevity), and transform them to <pre> elements.
