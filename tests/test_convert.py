@@ -1,11 +1,11 @@
 import datetime
 import textwrap
 from pathlib import Path
-from typing import List
+from typing import List, Tuple, Union
 
 import pytest
 
-from enex2md.convert import Converter, EnexParser, FileSystemSink, ParsedNote
+from enex2md.convert import TIMEZONE, Converter, EnexParser, FileSystemSink, ParsedNote
 
 enex_root = Path(__file__).parent / "enex"
 
@@ -64,7 +64,7 @@ class TestEnexParser:
         assert attachment.height == 32
 
 
-def _list_all_files(root, with_size: bool = False) -> List[Path]:
+def _list_all_files(root, with_size: bool = False) -> List[Union[Path, Tuple[Path, int]]]:
     files = (p for p in root.glob("**/*") if p.is_file())
     if with_size:
         return sorted((p.relative_to(root), p.stat().st_size) for p in files)
@@ -83,7 +83,7 @@ class TestFileSystemSink:
             title="Hello world",
             content="Hello, world!",
             tags=[],
-            created=datetime.datetime(2023, 7, 24, 12, 34, 56),
+            created=datetime.datetime(2023, 7, 24, 12, 34, 56, tzinfo=datetime.timezone.utc),
         )
 
     @pytest.mark.parametrize(
@@ -216,6 +216,24 @@ class TestFileSystemSink:
         ]
 
         assert "Overwriting existing file" in caplog.text
+
+    @pytest.mark.parametrize(
+        ["timezone", "expected"],
+        [
+            (TIMEZONE.UTC, "20230724/123456-Hello_world.md"),
+            (TIMEZONE.LOCAL, "20230724/153456-Hello_world.md"),
+        ],
+    )
+    def test_timezone(self, tmp_path, note, timezone, expected):
+        sink = FileSystemSink(
+            root=tmp_path,
+            note_path_template="{created:%Y%m%d}/{created:%H%M%S}-{title}.md",
+            timezone=timezone,
+        )
+        sink.store_note(note, lines=note.content.split())
+        assert _list_all_files(tmp_path) == [
+            Path(expected),
+        ]
 
 
 class TestConverter:
@@ -510,3 +528,33 @@ class TestConverter:
             (Path("Same_name_4.md"), pytest.approx(210, abs=20)),
             (Path("Same_name_5.md"), pytest.approx(210, abs=20)),
         ]
+
+    @pytest.mark.parametrize(
+        ["timezone", "expected_path", "expected_metadata"],
+        [
+            (
+                TIMEZONE.UTC,
+                "20230709/184204-The_title.md",
+                "- Created: 2023-07-09T18:42:04+00:00\n- Updated: 2023-07-09T18:43:22+00:00",
+            ),
+            (
+                TIMEZONE.LOCAL,
+                "20230709/214204-The_title.md",
+                "- Created: 2023-07-09T21:42:04+03:00\n- Updated: 2023-07-09T21:43:22+03:00",
+            ),
+        ],
+    )
+    def test_timezone(self, tmp_path, timezone, expected_path, expected_metadata):
+        path = (enex_root / "notebook01.enex").absolute()
+        converter = Converter(timezone=timezone)
+        sink = FileSystemSink(
+            root=tmp_path,
+            note_path_template="{created:%Y%m%d}/{created:%H%M%S}-{title}.md",
+            timezone=timezone,
+        )
+        converter.convert(enex=path, sink=sink)
+
+        generated_files = _list_all_files(tmp_path)
+
+        assert generated_files == [Path(expected_path)]
+        assert expected_metadata in generated_files[0].read_text()

@@ -6,7 +6,7 @@ from typing import Iterable, Iterator
 
 import click
 
-from enex2md.convert import Converter, EnexParser, FileSystemSink, StdOutSink
+from enex2md.convert import TIMEZONE, Converter, EnexParser, FileSystemSink, StdOutSink
 
 _log = logging.getLogger(__name__)
 
@@ -61,6 +61,12 @@ _log = logging.getLogger(__name__)
         ]
     ),
 )
+@click.option(
+    "--timezone",
+    help="What timezone to work in when formatting dates",
+    default=TIMEZONE.UTC,
+    type=click.Choice([TIMEZONE.UTC, TIMEZONE.LOCAL]),
+)
 @click.argument(
     "enex_sources",
     nargs=-1,
@@ -78,6 +84,7 @@ def app(
     unsafe_replacer,
     root_condition,
     on_existing_file,
+    timezone,
 ):
     logging.basicConfig(level=logging.INFO)
     # TODO: get rid of this non-useful --disk option?
@@ -90,13 +97,14 @@ def app(
             unsafe_replacer=unsafe_replacer,
             root_condition=root_condition,
             on_existing_file=on_existing_file,
+            timezone=timezone,
         )
     else:
         sink = StdOutSink()
     _log.info(f"Using {sink=}")
 
     parser = EnexParser()
-    converter = Converter(front_matter=front_matter)
+    converter = Converter(front_matter=front_matter, timezone=timezone)
 
     for enex_path in collect_enex_paths(enex_sources):
         _log.info(f"Processing input file {enex_path}.")

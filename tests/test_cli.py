@@ -1,11 +1,22 @@
 import textwrap
 from pathlib import Path
+from typing import List, Tuple, Union
 
+import pytest
 from click.testing import CliRunner
 
 from enex2md.cli import app
+from enex2md.convert import TIMEZONE
 
 enex_root = Path(__file__).parent / "enex"
+
+
+def _list_all_files(root, with_size: bool = False) -> List[Union[Path, Tuple[Path, int]]]:
+    files = (p for p in root.glob("**/*") if p.is_file())
+    if with_size:
+        return sorted((p.relative_to(root), p.stat().st_size) for p in files)
+    else:
+        return sorted(p.relative_to(root) for p in files)
 
 
 def test_basic_no_args():
@@ -57,7 +68,7 @@ def test_default_disk_legacy(tmp_path, monkeypatch):
     assert result.exit_code == 0
     assert result.output == ""
 
-    generated_files = [p.relative_to(tmp_path) for p in tmp_path.glob("**/*") if p.is_file()]
+    generated_files = _list_all_files(tmp_path)
     assert len(generated_files) == 1
     md_path = generated_files[0]
     assert md_path.name == "The_title.md"
@@ -101,7 +112,7 @@ def test_custom_paths(tmp_path, monkeypatch):
     assert result.exit_code == 0
     assert result.output == ""
 
-    generated_files = sorted(p.relative_to(tmp_path) for p in tmp_path.glob("**/*") if p.is_file())
+    generated_files = _list_all_files(tmp_path)
     assert generated_files == [
         Path("dump/notebook03/2023/20230712-Fa_fa_fa.md"),
         Path("dump/notebook03/_resources/2023/20230712-Fa_fa_fa/rckrll.png"),
@@ -146,7 +157,7 @@ def test_multiple_enex_paths(tmp_path, monkeypatch):
     assert result.exit_code == 0
     assert result.output == ""
 
-    generated_files = sorted(p.relative_to(tmp_path) for p in tmp_path.glob("**/*") if p.is_file())
+    generated_files = _list_all_files(tmp_path)
     assert generated_files == [
         Path("dump/notebook01/2023/20230709-The_title.md"),
         Path("dump/notebook02/2023/20230709-Nested_lists.md"),
@@ -171,7 +182,7 @@ def test_enex_folder(tmp_path, monkeypatch):
     assert result.exit_code == 0
     assert result.output == ""
 
-    generated_files = sorted(p.relative_to(tmp_path) for p in tmp_path.glob("**/*") if p.is_file())
+    generated_files = _list_all_files(tmp_path)
     assert generated_files == [
         Path("dump/notebook01/2023/20230709-The_title.md"),
         Path("dump/notebook02/2023/20230709-Nested_lists.md"),
@@ -187,3 +198,40 @@ def test_enex_folder(tmp_path, monkeypatch):
         Path("dump/notebook05/2023/20230722-Same_name_1.md"),
         Path("dump/notebook05/2023/20230722-Same_name_2.md"),
     ]
+
+
+@pytest.mark.parametrize(
+    ["timezone", "expected_path", "expected_metadata"],
+    [
+        (
+            TIMEZONE.UTC,
+            "20230709/184204-The_title.md",
+            "- Created: 2023-07-09T18:42:04+00:00\n- Updated: 2023-07-09T18:43:22+00:00",
+        ),
+        (
+            TIMEZONE.LOCAL,
+            "20230709/214204-The_title.md",
+            "- Created: 2023-07-09T21:42:04+03:00\n- Updated: 2023-07-09T21:43:22+03:00",
+        ),
+    ],
+)
+def test_timezone(tmp_path, monkeypatch, timezone, expected_path, expected_metadata):
+    path = (enex_root / "notebook01.enex").absolute()
+    args = [
+        "--disk",
+        "--output-root",
+        str(tmp_path),
+        "--note-path-template",
+        "{created:%Y%m%d}/{created:%H%M%S}-{title}.md",
+        "--timezone",
+        timezone,
+        str(path),
+    ]
+    monkeypatch.chdir(tmp_path)
+    result = CliRunner().invoke(app, args)
+    assert result.exit_code == 0
+    assert result.output == ""
+
+    generated_files = _list_all_files(tmp_path)
+    assert generated_files == [Path(expected_path)]
+    assert expected_metadata in generated_files[0].read_text()

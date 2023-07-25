@@ -178,6 +178,20 @@ class StdOutSink(Sink):
         print("--- End Note ---")
 
 
+class TIMEZONE:
+    UTC = "utc"
+    LOCAL = "local"
+
+
+def as_timezone(d: datetime.datetime, timezone: str) -> datetime.datetime:
+    if timezone == TIMEZONE.LOCAL:
+        return d.astimezone(tz=None)
+    elif timezone == TIMEZONE.UTC:
+        return d.astimezone(tz=datetime.timezone.utc)
+    else:
+        raise ValueError(timezone)
+
+
 class FileSystemSink(Sink):
     """Write Markdown files"""
 
@@ -206,6 +220,7 @@ class FileSystemSink(Sink):
         max_filename_length: int = 128,
         root_condition: str = ROOT_CONDITION.LEAVE_AS_IS,
         on_existing_file: str = ON_EXISTING_FILE.BUMP,
+        timezone: str = TIMEZONE.UTC,
     ):
         """
 
@@ -222,7 +237,6 @@ class FileSystemSink(Sink):
         super().__init__()
         self.root = Path(root or self.DEFAULT_OUTPUT_ROOT)
 
-        # TODO: option to use local timezone iso UTC?
         self.now = datetime.datetime.now(tz=datetime.timezone.utc)
 
         if note_path_template is None:
@@ -245,6 +259,8 @@ class FileSystemSink(Sink):
         self.written_files: Set[Path] = set()
         self.on_existing_file = on_existing_file
 
+        self.timezone = timezone
+
     def _check_root_condition(self):
         if self.root.exists():
             assert self.root.is_dir(), f"Must be a folder: {self.root}"
@@ -264,9 +280,9 @@ class FileSystemSink(Sink):
 
     def _build_path(self, template: str, note: ParsedNote) -> Path:
         path = self.root / template.format(
-            now=self.now,
+            now=as_timezone(self.now, timezone=self.timezone),
             enex=self._safe_name(note.source_enex.stem) if note.source_enex else "enex",
-            created=note.created,
+            created=as_timezone(note.created, timezone=self.timezone),
             title=self._safe_name(note.title),
         )
         path = self._bump_while(path, condition=lambda p: p in self.written_files)
@@ -321,8 +337,9 @@ class FileSystemSink(Sink):
 class Converter:
     """Convertor for ENEX note to Markdown format"""
 
-    def __init__(self, front_matter: bool = False):
+    def __init__(self, front_matter: bool = False, timezone: str = TIMEZONE.UTC):
         self.front_matter = front_matter
+        self.timezone = timezone
         self.stats = collections.Counter()
 
     def convert(self, enex: EnexPath, sink: Sink, parser: Optional[EnexParser] = None):
@@ -532,11 +549,10 @@ class Converter:
             metadata["author"] = note.author
         if note.source_url:
             metadata["source_url"] = note.source_url
-        # TODO: option to format time in local time (instead of UTC)
         if note.created:
-            metadata["created"] = note.created.isoformat()
+            metadata["created"] = as_timezone(note.created, timezone=self.timezone).isoformat()
         if note.updated:
-            metadata["updated"] = note.updated.isoformat()
+            metadata["updated"] = as_timezone(note.updated, timezone=self.timezone).isoformat()
 
         if note.tags:
             metadata["tags"] = ", ".join(note.tags)
