@@ -9,7 +9,7 @@ import os.path
 import re
 import xml.etree.ElementTree
 from pathlib import Path
-from typing import Callable, Iterable, Iterator, List, Optional, Set, Union
+from typing import Callable, Dict, Iterable, Iterator, List, Optional, Set, Union
 
 import html2text
 from bs4 import BeautifulSoup
@@ -55,7 +55,7 @@ class EnexParser:
     def __init__(self, chunk_size: int = 1024 * 1024, handle_attachments: bool = True):
         self.chunk_size = chunk_size
         self.handle_attachments = handle_attachments
-        self.stats = collections.Counter()
+        self.stats: Dict[str, int] = collections.Counter()
 
     def extract_note_elements(self, path: EnexPath) -> Iterator[xml.etree.ElementTree.Element]:
         """Extract notes from given ENEX (XML) file as XML Elements"""
@@ -80,7 +80,8 @@ class EnexParser:
                         if event == "end" and el.tag == "note":
                             note_count += 1
                             yield el
-                        root.clear()
+                        if root:
+                            root.clear()
             finally:
                 _log.info(f"Stop parsing {path}, bytes read: {bytes_read} bytes, notes prodiced: {note_count}.")
 
@@ -88,10 +89,10 @@ class EnexParser:
         self, element: xml.etree.ElementTree.Element, path: str, convertor: Optional[Callable] = None, default=None
     ) -> Union[None, str, int, float, datetime.datetime]:
         """Get value from XML Element"""
-        value = element.find(path)
-        if value is None:
+        el = element.find(path)
+        if el is None:
             return default
-        value = value.text
+        value = el.text
         if convertor:
             value = convertor(value)
         return value
@@ -104,8 +105,9 @@ class EnexParser:
     def parse_attachment_element(self, element: xml.etree.ElementTree.Element) -> ParsedAttachment:
         """Parse an attachment (resource) XML element."""
         # Parse data (base64 with newlines)
-        data = re.sub(r"\s+", "", element.find("data").text)
-        data = base64.b64decode(data)
+        data_element = element.find("data")
+        assert data_element is not None and data_element.text
+        data = base64.b64decode(re.sub(r"\s+", "", data_element.text))
         file_name = self._get_value(element, "resource-attributes/file-name")
         mime_type = self._get_value(element, "mime")
         if not file_name:
@@ -136,7 +138,7 @@ class EnexParser:
         return ParsedNote(
             title=(self._get_value(element, "title")),
             content=(self._get_value(element, "content")),
-            tags=[e.text for e in element.iterfind("tag")],
+            tags=[e.text for e in element.iterfind("tag") if e.text],
             created=(self._get_value(element, "created", convertor=self._datetime_parse)),
             updated=(self._get_value(element, "updated", convertor=self._datetime_parse)),
             author=(self._get_value(element, "note-attributes/author")),
@@ -157,7 +159,7 @@ class Sink:
     handle_attachments = True
 
     def __init__(self):
-        self.stats = collections.Counter()
+        self.stats: Dict[str, int] = collections.Counter()
 
     def store_attachment(self, note: ParsedNote, attachment: ParsedAttachment) -> Optional[Path]:
         raise NotImplementedError
@@ -340,7 +342,7 @@ class Converter:
     def __init__(self, front_matter: bool = False, timezone: str = TIMEZONE.UTC):
         self.front_matter = front_matter
         self.timezone = timezone
-        self.stats = collections.Counter()
+        self.stats: Dict[str, int] = collections.Counter()
 
     def convert(self, enex: EnexPath, sink: Sink, parser: Optional[EnexParser] = None):
         parser = parser or EnexParser()
