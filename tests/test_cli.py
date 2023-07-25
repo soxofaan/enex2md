@@ -29,7 +29,6 @@ class TestCli:
         assert result.exit_code == 2
         assert isinstance(result.exception, SystemExit)
 
-
     def test_basic_nonexistent_file(self):
         args = ["inexistent.enex"]
         result = CliRunner().invoke(app, args=args)
@@ -40,7 +39,7 @@ class TestCli:
 
     def test_basic_stdout(self):
         path = (enex_root / "notebook01.enex").absolute()
-        args = [str(path)]
+        args = [str(path), "--output-root", "-"]
         result = CliRunner().invoke(app, args)
         assert result.exit_code == 0
         assert result.output == (
@@ -65,9 +64,9 @@ class TestCli:
         )
 
 
-    def test_default_disk_legacy(self, tmp_path):
+    def test_basic(self, tmp_path):
         path = (enex_root / "notebook01.enex").absolute()
-        args = ["--disk", str(path)]
+        args = [str(path)]
         result = CliRunner().invoke(app, args)
         assert result.exit_code == 0
         assert result.output == ""
@@ -102,7 +101,6 @@ class TestCli:
     def test_custom_paths(self, tmp_path):
         path = (enex_root / "notebook03.enex").absolute()
         args = [
-            "--disk",
             "--output-root",
             "dump",
             "--note-path-template",
@@ -143,7 +141,6 @@ class TestCli:
 
     def test_multiple_enex_paths(self, tmp_path):
         args = [
-            "--disk",
             "--output-root",
             "dump",
             "--note-path-template",
@@ -169,7 +166,6 @@ class TestCli:
 
     def test_enex_folder(self, tmp_path):
         args = [
-            "--disk",
             "--output-root",
             "dump",
             "--note-path-template",
@@ -218,7 +214,6 @@ class TestCli:
     def test_timezone(self, tmp_path, timezone, expected_path, expected_metadata):
         path = (enex_root / "notebook01.enex").absolute()
         args = [
-            "--disk",
             "--output-root",
             str(tmp_path),
             "--note-path-template",

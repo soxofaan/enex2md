@@ -12,13 +12,12 @@ _log = logging.getLogger(__name__)
 
 
 @click.command()
-@click.option("--disk", is_flag=True, help="output to disk instead of stdout (default)")
 @click.option("--front-matter", is_flag=True, help='Put note metadata in a "frontmatter" block.')
 @click.option(
     "--output-root",
     default=FileSystemSink.DEFAULT_OUTPUT_ROOT,
     help="Output root folder",
-    type=click.Path(exists=False, file_okay=False, dir_okay=True),
+    type=click.Path(exists=False, file_okay=False, dir_okay=True, allow_dash=True),
 )
 @click.option(
     "--note-path-template",
@@ -74,7 +73,6 @@ _log = logging.getLogger(__name__)
     type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True, path_type=Path),
 )
 def app(
-    disk,
     front_matter,
     output_root,
     enex_sources,
@@ -87,8 +85,10 @@ def app(
     timezone,
 ):
     logging.basicConfig(level=logging.INFO)
-    # TODO: get rid of this non-useful --disk option?
-    if disk:
+
+    if output_root == "-":
+        sink = StdOutSink()
+    else:
         sink = FileSystemSink(
             root=output_root,
             note_path_template=note_path_template,
@@ -99,8 +99,6 @@ def app(
             on_existing_file=on_existing_file,
             timezone=timezone,
         )
-    else:
-        sink = StdOutSink()
     _log.info(f"Using {sink=}")
 
     parser = EnexParser()

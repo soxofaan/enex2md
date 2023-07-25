@@ -53,6 +53,4 @@ Convert a given ENEX file:
 enex2md notebook.enex
 ```
 
-The output is written to `STDOUT` by default. If you want to write to disk instead, add a flag `--disk` to the command. This option will create a directory based on run time timestamp, and place individual files under that.
-
-*Please note, that on STDOUT output option attachments (including images) are not processed!*
+The output is written to an folder `output` by default.
