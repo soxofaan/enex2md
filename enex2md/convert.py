@@ -381,7 +381,7 @@ class Converter:
             for attachment in note.attachments:
                 attachment_ref = sink.store_attachment(note=note, attachment=attachment)
                 content = content.replace(
-                    f"ATCHMT:{attachment.md5_hash}",
+                    f"![](enex2md-attachment:{attachment.md5_hash})",
                     f"\n![{attachment.file_name}]({attachment_ref})",
                 )
 
@@ -443,8 +443,7 @@ class Converter:
         def replace_attachment(match):
             h = re.search('hash="([0-9a-fA-F]+)"', match.group(1))
             if h:
-                # TODO: avoid ad-hoc `ATCHMT:` construct? e.g. `![](enex2md://hash)
-                return f"<div>ATCHMT:{h.group(1)}</div>"
+                return f"<div>![](enex2md-attachment:{h.group(1)})</div>"
             else:
                 _log.warning("Failed to find <en-media> hash")
                 return match.group(0)
