@@ -307,7 +307,7 @@ class FileSystemSink(Sink):
         base_path = path
         counter = 1
         while condition(path):
-            path = base_path.with_stem(f"{base_path.stem}_{counter}")
+            path = base_path.with_name(f"{base_path.stem}_{counter}{base_path.suffix}")
             counter += 1
         return path
 
