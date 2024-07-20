@@ -387,6 +387,48 @@ class TestConverter:
         )
         assert png_path.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
 
+    def test_multiple_attachments(self, tmp_path):
+        path = (enex_root / "notebook06.enex").absolute()
+        converter = Converter()
+        converter.convert(enex=path, sink=FileSystemSink())
+
+        generated_files = _list_all_files(tmp_path)
+        assert len(generated_files) == 3
+        (md_path,) = [p for p in generated_files if p.suffix == ".md"]
+        png_paths = [p for p in generated_files if p.suffix == ".png"]
+        assert md_path.name == "Fa_fa_fa.md"
+
+        assert set(p.name for p in tmp_path.glob("output/*/notebook06/*")) == {
+            "Fa_fa_fa.md",
+            "Fa_fa_fa_attachments",
+        }
+
+        md_content = md_path.read_text()
+        assert md_content == textwrap.dedent(
+            """\
+            # Fa fa fa
+
+            ## Note metadata
+
+            - Title: Fa fa fa
+            - Author: John Doe
+            - Created: 2023-07-12T20:16:08+00:00
+            - Updated: 2023-07-12T20:18:38+00:00
+
+            ## Note Content
+
+            lo lo lo
+
+            ![rckrll.png](Fa_fa_fa_attachments/rckrll.png)
+            la la la
+
+            ![rckrlltoo.png](Fa_fa_fa_attachments/rckrlltoo.png)
+            bye
+            """
+        )
+        for png_path in png_paths:
+            assert png_path.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
+
     def test_custom_paths_basic(self, tmp_path):
         path = (enex_root / "notebook01.enex").absolute()
         converter = Converter()

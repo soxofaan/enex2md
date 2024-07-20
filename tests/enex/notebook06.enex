@@ -10,7 +10,7 @@
     </note-attributes>
     <content>
       <![CDATA[<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd"><en-note><div>lo lo lo</div><en-media hash="7e0fbb78891d9e94fe5f94d85cc858e0" type="image/png" style="--en-naturalWidth:64; --en-naturalHeight:32;" /><div>la la la</div></en-note>      ]]>
+<!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd"><en-note><div>lo lo lo</div><en-media hash="7e0fbb78891d9e94fe5f94d85cc858e0" type="image/png" style="--en-naturalWidth:64; --en-naturalHeight:32;" /><div>la la la</div><en-media hash="ab3d44e409a0c6d524e7499753ea9958" type="image/png" style="--en-naturalWidth:64; --en-naturalHeight:32;" /><div>bye</div></en-note>      ]]>
     </content>
     <resource>
       <data encoding="base64">
@@ -25,6 +25,17 @@ SoYwIOHIb2yhACOVCWGg+QtMAuSEmIF4wo6BS85/w1syXYtzWWgAAAAASUVORK5CYII=
       <height>32</height>
       <resource-attributes>
         <file-name>rckrll.png</file-name>
+      </resource-attributes>
+    </resource>
+    <resource>
+      <data encoding="base64">
+iVBORw0KGgoAAAABlaBlaBla
+      </data>
+      <mime>image/png</mime>
+      <width>64</width>
+      <height>32</height>
+      <resource-attributes>
+        <file-name>rckrlltoo.png</file-name>
       </resource-attributes>
     </resource>
   </note>

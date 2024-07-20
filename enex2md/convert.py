@@ -280,7 +280,7 @@ class FileSystemSink(Sink):
         safe = safe.strip(self.unsafe_replacer)
         return safe[: self.max_filename_length]
 
-    def _build_path(self, template: str, note: ParsedNote) -> Path:
+    def _build_path(self, template: str, note: ParsedNote, handle_existing: bool = True) -> Path:
         path = self.root / template.format(
             now=as_timezone(self.now, timezone=self.timezone),
             enex=self._safe_name(note.source_enex.stem) if note.source_enex else "enex",
@@ -288,7 +288,8 @@ class FileSystemSink(Sink):
             title=self._safe_name(note.title),
         )
         path = self._bump_while(path, condition=lambda p: p in self.written_files)
-        if path.exists():
+
+        if handle_existing and path.exists() and path.is_file():
             if self.on_existing_file == self.ON_EXISTING_FILE.BUMP:
                 path = self._bump_while(path, condition=lambda p: p.exists())
             elif self.on_existing_file == self.ON_EXISTING_FILE.FAIL:
@@ -312,7 +313,10 @@ class FileSystemSink(Sink):
         return path
 
     def store_attachment(self, note: ParsedNote, attachment: ParsedAttachment) -> Path:
-        attachment_path = self._build_path(template=self.attachments_path_template, note=note) / attachment.file_name
+        attachment_path = (
+            self._build_path(template=self.attachments_path_template, note=note, handle_existing=False)
+            / attachment.file_name
+        )
         _log.info(f"Writing attachment {attachment} of note {note} to {attachment_path}")
         attachment_path.parent.mkdir(parents=True, exist_ok=True)
         self.written_files.add(attachment_path)
