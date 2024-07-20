@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add options to fine-tune "safe" filenames: allow spaces? replacement character.
 - Add options to fine-tune handling of non-empty output root and existing target files
 - Add option to format dates in local timezone instead of UTC
+- Add option to exclude metadata fields
+- Add option to add tag(s) to each converted note
 
 ### Changed
 
@@ -39,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed indentation issue with nested lists
 - ENEX parsing: support both self-closing and closing tag form of `<en-media>` element
+- Use URL encoding for attachments with spaces (Obsidian compatibility)
+- Fix tags formatting in frontmatter (should be YAML)
 
 
 ## [0.4.2] - 2019-11-18
