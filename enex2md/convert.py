@@ -397,7 +397,7 @@ class Converter:
         self.stats["notes exported"] += 1
 
     def _handle_codeblocks(self, text: str) -> str:
-        """ We would need to be able to recognise these (linebreaks added for brevity), and transform them to <pre> elements.
+        """We would need to be able to recognise these (linebreaks added for brevity), and transform them to <pre> elements.
         <div style="box-sizing: border-box; padding: 8px; font-family: Monaco, Menlo, Consolas, &quot;Courier New&quot;, monospace; font-size: 12px; color: rgb(51, 51, 51); border-top-left-radius: 4px; border-top-right-radius: 4px; border-bottom-right-radius: 4px; border-bottom-left-radius: 4px; background-color: rgb(251, 250, 248); border: 1px solid rgba(0, 0, 0, 0.14902);-en-codeblock:true;">
         <div>import this</div>
         <div><br /></div>
@@ -412,20 +412,20 @@ class Converter:
         <div>print(my data)</div>
         </div>
         """
-        soup = BeautifulSoup(text, 'html.parser')
+        soup = BeautifulSoup(text, "html.parser")
 
-        for block in soup.find_all(style=re.compile(r'.*-en-codeblock:true.*')):
+        for block in soup.find_all(style=re.compile(r".*-en-codeblock:true.*")):
             # Get the data, and set it in pre-element line by line.
-            code = 'code-begin-code-begin-code-begin\n'
-            for nugget in block.select('div'):
+            code = "code-begin-code-begin-code-begin\n"
+            for nugget in block.select("div"):
                 code += f"{nugget.text}\n"
-            code += 'code-end-code-end-code-end'
+            code += "code-end-code-end-code-end"
 
             # Fix the duoblequotes
-            code = code.replace('“', '"')
-            code = code.replace('”', '"')
+            code = code.replace("“", '"')
+            code = code.replace("”", '"')
 
-            new_block = soup.new_tag('pre')
+            new_block = soup.new_tag("pre")
             new_block.string = code
             block.replace_with(new_block)
 
@@ -456,23 +456,23 @@ class Converter:
         return text
 
     def _handle_tables(self, text: str) -> str:
-        """ Split by tables. Within the blocks containing tables, remove divs. """
+        """Split by tables. Within the blocks containing tables, remove divs."""
 
-        parts = re.split(r'(<table.*?</table>)', text)
+        parts = re.split(r"(<table.*?</table>)", text)
 
         new_parts = []
         for part in parts:
-            if part.startswith('<table'):
-                part = part.replace('<div>', '')
-                part = part.replace('</div>', '')
+            if part.startswith("<table"):
+                part = part.replace("<div>", "")
+                part = part.replace("</div>", "")
             new_parts.append(part)
 
-        text = ''.join(new_parts)
+        text = "".join(new_parts)
 
         return text
 
     def _handle_strongs_emphases(self, text: str) -> str:
-        """ Make these work.
+        """Make these work.
         <span style="font-weight: bold;">This text is bold.</span>
         <span style="font-style: italic;">This text is italic.</span>
         <span style="font-style: italic; font-weight: bold;">This text is bold and italic.</span>
@@ -482,27 +482,29 @@ class Converter:
         </div>
         <div>This text is normal. <i><b>This text is bold and italic.</b></i> This text is normal again.</div>
         """
-        parts = re.split(r'(<span.*?</span>)', text)
+        parts = re.split(r"(<span.*?</span>)", text)
 
         new_parts = []
         for part in parts:
-            match = re.match(r'<span style=(?P<formatting>.*?)>(?P<content>.*?)</span>', part)
+            match = re.match(r"<span style=(?P<formatting>.*?)>(?P<content>.*?)</span>", part)
             if match:
-                if match.group('content') == '<br />':
-                    part = '<br />'
+                if match.group("content") == "<br />":
+                    part = "<br />"
                 else:
-                    if 'font-style: italic;' in match.group('formatting') and 'font-weight: bold;' in match.group('formatting'):
+                    if "font-style: italic;" in match.group("formatting") and "font-weight: bold;" in match.group(
+                        "formatting"
+                    ):
                         # part = f"<i><b>{match.group('content')}</b></i>"
                         part = f"<span>***{match.group('content')}***</span>"
-                    elif 'font-weight: bold;' in match.group('formatting'):
+                    elif "font-weight: bold;" in match.group("formatting"):
                         # part = f"<b>{match.group('content')}</b>"
                         part = f"<span>**{match.group('content')}**</span>"
-                    elif 'font-style: italic;' in match.group('formatting'):
+                    elif "font-style: italic;" in match.group("formatting"):
                         # part = f"<i>{match.group('content')}</i>"
                         part = f"<span>*{match.group('content')}*</span>"
             new_parts.append(part)
 
-        text = ''.join(new_parts)
+        text = "".join(new_parts)
 
         return text
 
@@ -514,31 +516,31 @@ class Converter:
         return text
 
     def _handle_lists(self, text: str) -> str:
-        text = re.sub(r'<ul>', '<br /><ul>', text)
-        text = re.sub(r'<ol>', '<br /><ol>', text)
+        text = re.sub(r"<ul>", "<br /><ul>", text)
+        text = re.sub(r"<ol>", "<br /><ol>", text)
         return text
 
     def _post_processor_code_newlines(self, text: str) -> str:
         new_lines = []
-        for line in text.split('\n'):
+        for line in text.split("\n"):
             # The html2text conversion generates whitespace from enex. Let's remove the redundant.
             line = line.rstrip()
 
-            if line == '**' or line == ' **':
-                line = ''
+            if line == "**" or line == " **":
+                line = ""
 
             if line.startswith("    ") and not line.lstrip()[:1] == "*":
                 line = line[4:]
 
-            if line == 'code-begin-code-begin-code-begin' or line == 'code-end-code-end-code-end':
-                new_lines.append('```')
+            if line == "code-begin-code-begin-code-begin" or line == "code-end-code-end-code-end":
+                new_lines.append("```")
             else:
                 new_lines.append(line)
 
-        text = '\n'.join(new_lines)
+        text = "\n".join(new_lines)
 
         # Merge multiple empty lines to one.
-        text = re.sub(r'\n{3,}', '\n\n', text).strip()
+        text = re.sub(r"\n{3,}", "\n\n", text).strip()
 
         return text
 

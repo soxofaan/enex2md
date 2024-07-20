@@ -36,7 +36,6 @@ class TestCli:
         assert isinstance(result.exception, SystemExit)
         assert "Error: Invalid value for 'ENEX_SOURCES...': Path 'inexistent.enex' does not exist." in result.stdout
 
-
     def test_basic_stdout(self):
         path = (enex_root / "notebook01.enex").absolute()
         args = [str(path), "--output-root", "-"]
@@ -62,7 +61,6 @@ class TestCli:
             "  * chocolate\n"
             "--- End Note ---\n"
         )
-
 
     def test_basic(self, tmp_path):
         path = (enex_root / "notebook01.enex").absolute()
@@ -96,7 +94,6 @@ class TestCli:
               * chocolate
             """
         )
-
 
     def test_custom_paths(self, tmp_path):
         path = (enex_root / "notebook03.enex").absolute()
@@ -163,7 +160,6 @@ class TestCli:
             Path("dump/notebook03/_resources/2023/20230712-Fa_fa_fa/rckrll.png"),
         ]
 
-
     def test_enex_folder(self, tmp_path):
         args = [
             "--output-root",
@@ -194,7 +190,6 @@ class TestCli:
             Path("dump/notebook05/2023/20230722-Same_name_1.md"),
             Path("dump/notebook05/2023/20230722-Same_name_2.md"),
         ]
-
 
     @pytest.mark.parametrize(
         ["timezone", "expected_path", "expected_metadata"],

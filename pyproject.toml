@@ -68,7 +68,8 @@ profile = "black"
 
 
 [tool.ruff]
-ignore = [
+lint.ignore = [
     "E501", # ignore line length violations
 ]
 target-version = "py311"
+line-length = 120

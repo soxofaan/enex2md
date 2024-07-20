@@ -123,5 +123,5 @@ def collect_enex_paths(enex_sources: Iterable[Path]) -> Iterator[Path]:
             raise ValueError(enex_source)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app()
