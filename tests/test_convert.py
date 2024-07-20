@@ -447,6 +447,24 @@ class TestConverter:
             Path("attachments/rckrll_1.png"),
         ]
 
+    def test_attachment_space_encoding(self, tmp_path):
+        converter = Converter()
+        sink = FileSystemSink(
+            root=tmp_path,
+            note_path_template="{title}.md",
+            attachments_path_template="{title} attachments",
+            allow_spaces_in_filenames=True,
+        )
+        converter.convert(enex=(enex_root / "notebook03.enex").absolute(), sink=sink)
+
+        generated_files = _list_all_files(tmp_path)
+        assert generated_files == [
+            Path("Fa fa fa attachments/rckrll.png"),
+            Path("Fa fa fa.md"),
+        ]
+        md_content = Path("Fa fa fa.md").read_text().split("\n")
+        assert "![rckrll.png](Fa%20fa%20fa%20attachments/rckrll.png)" in md_content
+
     def test_custom_paths_basic(self, tmp_path):
         path = (enex_root / "notebook01.enex").absolute()
         converter = Converter()

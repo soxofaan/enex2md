@@ -386,6 +386,8 @@ class Converter:
         if sink.handle_attachments and note.attachments:
             for attachment in note.attachments:
                 attachment_ref = sink.store_attachment(note=note, attachment=attachment)
+                # TODO Poor man's URL encoding here (just spaces). Need for additional encoding?
+                attachment_ref = str(attachment_ref).replace(" ", "%20")
                 content = content.replace(
                     f"![](enex2md-attachment:{attachment.md5_hash})",
                     f"\n![{attachment.file_name}]({attachment_ref})",
