@@ -573,7 +573,7 @@ class Converter:
             metadata["updated"] = as_timezone(note.updated, timezone=self.timezone).isoformat()
 
         if note.tags:
-            metadata["tags"] = ", ".join(note.tags)
+            metadata["tags"] = repr(note.tags)
 
         metadata = {k: v for k, v in metadata.items() if k not in self.metadata_excludes}
 
