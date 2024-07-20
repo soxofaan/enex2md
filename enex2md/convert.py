@@ -350,12 +350,17 @@ class Converter:
     """Convertor for ENEX note to Markdown format"""
 
     def __init__(
-        self, front_matter: bool = False, timezone: str = TIMEZONE.UTC, metadata_excludes: Optional[List[str]] = None
+        self,
+        front_matter: bool = False,
+        timezone: str = TIMEZONE.UTC,
+        metadata_excludes: Optional[List[str]] = None,
+        add_tags: Optional[List[str]] = None,
     ):
         self.front_matter = front_matter
         self.timezone = timezone
         self.stats: Dict[str, int] = collections.Counter()
-        self.metadata_excludes = metadata_excludes or []
+        self.metadata_excludes = metadata_excludes
+        self.add_tags = add_tags
 
     def convert(self, enex: EnexPath, sink: Sink, parser: Optional[EnexParser] = None):
         parser = parser or EnexParser()
@@ -572,10 +577,14 @@ class Converter:
         if note.updated:
             metadata["updated"] = as_timezone(note.updated, timezone=self.timezone).isoformat()
 
-        if note.tags:
-            metadata["tags"] = repr(note.tags)
+        tags = set(note.tags)
+        if self.add_tags:
+            tags.update(self.add_tags)
+        if tags:
+            metadata["tags"] = repr(list(tags))
 
-        metadata = {k: v for k, v in metadata.items() if k not in self.metadata_excludes}
+        if self.metadata_excludes:
+            metadata = {k: v for k, v in metadata.items() if k not in self.metadata_excludes}
 
         if self.front_matter:
             yield "---"
