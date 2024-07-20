@@ -66,6 +66,11 @@ _log = logging.getLogger(__name__)
     default=TIMEZONE.UTC,
     type=click.Choice([TIMEZONE.UTC, TIMEZONE.LOCAL]),
 )
+@click.option(
+    "--metadata-exclude",
+    multiple=True,
+    help="Metadata fields to exclude in the export.",
+)
 @click.argument(
     "enex_sources",
     nargs=-1,
@@ -83,6 +88,7 @@ def app(
     root_condition,
     on_existing_file,
     timezone,
+    metadata_exclude,
 ):
     logging.basicConfig(level=logging.INFO)
 
@@ -102,7 +108,7 @@ def app(
     _log.info(f"Using {sink=}")
 
     parser = EnexParser()
-    converter = Converter(front_matter=front_matter, timezone=timezone)
+    converter = Converter(front_matter=front_matter, timezone=timezone, metadata_excludes=metadata_exclude)
 
     for enex_path in collect_enex_paths(enex_sources):
         _log.info(f"Processing input file {enex_path}.")

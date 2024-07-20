@@ -349,10 +349,13 @@ class FileSystemSink(Sink):
 class Converter:
     """Convertor for ENEX note to Markdown format"""
 
-    def __init__(self, front_matter: bool = False, timezone: str = TIMEZONE.UTC):
+    def __init__(
+        self, front_matter: bool = False, timezone: str = TIMEZONE.UTC, metadata_excludes: Optional[List[str]] = None
+    ):
         self.front_matter = front_matter
         self.timezone = timezone
         self.stats: Dict[str, int] = collections.Counter()
+        self.metadata_excludes = metadata_excludes or []
 
     def convert(self, enex: EnexPath, sink: Sink, parser: Optional[EnexParser] = None):
         parser = parser or EnexParser()
@@ -571,6 +574,8 @@ class Converter:
 
         if note.tags:
             metadata["tags"] = ", ".join(note.tags)
+
+        metadata = {k: v for k, v in metadata.items() if k not in self.metadata_excludes}
 
         if self.front_matter:
             yield "---"
