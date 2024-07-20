@@ -281,9 +281,13 @@ class FileSystemSink(Sink):
         return safe[: self.max_filename_length]
 
     def _build_path(self, template: str, note: ParsedNote, handle_existing: bool = True) -> Path:
+        enex = self._safe_name(note.source_enex.stem) if note.source_enex else "enex"
+        # unnumbered: ENEX archive file name, but without trailing enumeration suffixes ("-01", "-2022-1", etc)
+        enex_unnumbered = re.fullmatch(r"^(.*?)(-[-0-9]*)?$", enex).group(1)
         path = self.root / template.format(
             now=as_timezone(self.now, timezone=self.timezone),
-            enex=self._safe_name(note.source_enex.stem) if note.source_enex else "enex",
+            enex=enex,
+            enex_unnumbered=enex_unnumbered,
             created=as_timezone(note.created, timezone=self.timezone),
             title=self._safe_name(note.title),
         )

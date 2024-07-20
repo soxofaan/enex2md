@@ -636,3 +636,21 @@ class TestConverter:
 
         assert generated_files == [Path(expected_path)]
         assert expected_metadata in generated_files[0].read_text()
+
+    def test_enex_unnumbered(self, tmp_path):
+        converter = Converter()
+        sink = FileSystemSink(
+            root=tmp_path,
+            note_path_template="{enex_unnumbered}/{title}.md",
+            attachments_path_template="{enex_unnumbered}/attachments",
+        )
+        converter.convert(enex=(enex_root / "notebook03.enex").absolute(), sink=sink)
+        converter.convert(enex=(enex_root / "notebook03-3.enex").absolute(), sink=sink)
+
+        generated_files = _list_all_files(tmp_path)
+        assert generated_files == [
+            Path("notebook03/Fa_fa_fa.md"),
+            Path("notebook03/Fa_fa_fa_1.md"),
+            Path("notebook03/attachments/rckrll.png"),
+            Path("notebook03/attachments/untitled.png"),
+        ]
