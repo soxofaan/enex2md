@@ -429,6 +429,24 @@ class TestConverter:
         for png_path in png_paths:
             assert png_path.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
 
+    def test_attachment_collision(self, tmp_path):
+        converter = Converter()
+        sink = FileSystemSink(
+            root=tmp_path,
+            note_path_template="{title}.md",
+            attachments_path_template="attachments",
+        )
+        converter.convert(enex=(enex_root / "notebook03.enex").absolute(), sink=sink)
+        converter.convert(enex=(enex_root / "notebook03-2.enex").absolute(), sink=sink)
+
+        generated_files = _list_all_files(tmp_path)
+        assert generated_files == [
+            Path("Fa_fa_fa.md"),
+            Path("Fa_fa_fa_1.md"),
+            Path("attachments/rckrll.png"),
+            Path("attachments/rckrll_1.png"),
+        ]
+
     def test_custom_paths_basic(self, tmp_path):
         path = (enex_root / "notebook01.enex").absolute()
         converter = Converter()

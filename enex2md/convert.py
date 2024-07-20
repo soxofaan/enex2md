@@ -317,6 +317,8 @@ class FileSystemSink(Sink):
             self._build_path(template=self.attachments_path_template, note=note, handle_existing=False)
             / attachment.file_name
         )
+        attachment_path = self._bump_while(attachment_path, condition=lambda p: p in self.written_files)
+
         _log.info(f"Writing attachment {attachment} of note {note} to {attachment_path}")
         attachment_path.parent.mkdir(parents=True, exist_ok=True)
         self.written_files.add(attachment_path)
