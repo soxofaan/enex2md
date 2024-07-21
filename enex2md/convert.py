@@ -586,7 +586,7 @@ class Converter:
             metadata["updated"] = as_timezone(note.updated, timezone=self.timezone).isoformat()
 
         if self.add_origin:
-            metadata["origin"] = (f"Evernote notebook {note.enex_name(strip_numbering=True)!r}",)
+            metadata["origin"] = f"Evernote notebook {note.enex_name(strip_numbering=True)!r}"
 
         tags = set(note.tags)
         if self.add_tags:

@@ -300,6 +300,29 @@ class TestConverter:
             """
         )
 
+    def test_add_origin(self, tmp_path):
+        path = (enex_root / "notebook01.enex").absolute()
+        converter = Converter(front_matter=True, add_origin=True)
+        converter.convert(enex=path, sink=FileSystemSink())
+
+        generated_files = _list_all_files(tmp_path)
+        assert len(generated_files) == 1
+        md_path = generated_files[0]
+        assert md_path.name == "The_title.md"
+        md_content = md_path.read_text()
+        expected = textwrap.dedent(
+            """\
+            ---
+            title: The title
+            author: John Doe
+            created: 2023-07-09T18:42:04+00:00
+            updated: 2023-07-09T18:43:22+00:00
+            origin: Evernote notebook 'notebook01'
+            ---
+            """
+        )
+        assert md_content.startswith(expected)
+
     def test_nested_lists(self, tmp_path):
         path = (enex_root / "notebook02.enex").absolute()
         converter = Converter()
