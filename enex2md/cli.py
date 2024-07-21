@@ -71,7 +71,16 @@ _log = logging.getLogger(__name__)
     multiple=True,
     help="Metadata fields to exclude in the conversion.",
 )
-@click.option("--add-tag", multiple=True, help="Tag to add to converted note.")
+@click.option(
+    "--add-tag",
+    multiple=True,
+    help="Tag to add to converted note.",
+)
+@click.option(
+    "--add-origin",
+    is_flag=True,
+    default=False,
+)
 @click.argument(
     "enex_sources",
     nargs=-1,
@@ -91,6 +100,7 @@ def app(
     timezone,
     metadata_exclude,
     add_tag,
+    add_origin,
 ):
     logging.basicConfig(level=logging.INFO)
 
@@ -111,7 +121,11 @@ def app(
 
     parser = EnexParser()
     converter = Converter(
-        front_matter=front_matter, timezone=timezone, metadata_excludes=metadata_exclude, add_tags=add_tag
+        front_matter=front_matter,
+        timezone=timezone,
+        metadata_excludes=metadata_exclude,
+        add_tags=add_tag,
+        add_origin=add_origin,
     )
 
     for enex_path in collect_enex_paths(enex_sources):

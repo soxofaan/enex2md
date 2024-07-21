@@ -359,12 +359,14 @@ class Converter:
         timezone: str = TIMEZONE.UTC,
         metadata_excludes: Optional[List[str]] = None,
         add_tags: Optional[List[str]] = None,
+        add_origin: bool = False,
     ):
         self.front_matter = front_matter
         self.timezone = timezone
         self.stats: Dict[str, int] = collections.Counter()
         self.metadata_excludes = metadata_excludes
         self.add_tags = add_tags
+        self.add_origin = add_origin
 
     def convert(self, enex: EnexPath, sink: Sink, parser: Optional[EnexParser] = None):
         parser = parser or EnexParser()
@@ -571,7 +573,6 @@ class Converter:
     def _format_header(self, note: ParsedNote) -> Iterator[str]:
         metadata = {
             "title": note.title,
-            "origin": f"Evernote notebook {note.enex_name(strip_numbering=True)!r}",
         }
         if note.author:
             metadata["author"] = note.author
@@ -581,6 +582,9 @@ class Converter:
             metadata["created"] = as_timezone(note.created, timezone=self.timezone).isoformat()
         if note.updated:
             metadata["updated"] = as_timezone(note.updated, timezone=self.timezone).isoformat()
+
+        if self.add_origin:
+            metadata["origin"] = (f"Evernote notebook {note.enex_name(strip_numbering=True)!r}",)
 
         tags = set(note.tags)
         if self.add_tags:
