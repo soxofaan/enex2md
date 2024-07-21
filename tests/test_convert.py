@@ -265,7 +265,6 @@ class TestConverter:
             ## Note Content
 
             Things to buy:
-
               * apple
               * banana
               * chocolate
@@ -295,7 +294,6 @@ class TestConverter:
             # The title
 
             Things to buy:
-
               * apple
               * banana
               * chocolate
@@ -326,21 +324,15 @@ class TestConverter:
             ## Note Content
 
             Let's nest some lists:
-
               * apple
-
                 * red
                 * green
-
                   * classic!
                 * yellow
               * banana
-
                 * yellow
-
                   * brown-black: avoid!
               * chocolate:
-
                 * white
                 * brown
                 * black
@@ -496,7 +488,6 @@ class TestConverter:
             ## Note Content
 
             Things to buy:
-
               * apple
               * banana
               * chocolate
@@ -654,3 +645,97 @@ class TestConverter:
             Path("notebook03/attachments/rckrll.png"),
             Path("notebook03/attachments/untitled.png"),
         ]
+
+    def test_nested_list_handling(self, tmp_path):
+        note = ParsedNote(
+            title="test",
+            content=textwrap.dedent("""
+                <div>Operation modes</div>
+                <div>
+                <ul>
+                <li>CSS + HTML files<br/></li>
+                <li style="list-style: none">
+                <ul>
+                <li>match selectors</li>
+                <li>report unused</li>
+                </ul>
+                </li>
+                <li>CSS + source files</li>
+                <li style="list-style: none">
+                <ul>
+                <li>extract ids and classes</li>
+                <li style="list-style: none">
+                <ul>
+                <li>better: do grep on strings only</li>
+                </ul>
+                </li>
+                <li>resolve unused ids</li>
+                </ul>
+                </li>
+                <li>CSS files + HTML files + source files</li>
+                <li style="list-style: none">
+                <ul>
+                <li>phase 1</li>
+                <li>report selectors</li>
+                <li style="list-style: none">
+                <ul>
+                <li>unused</li>
+                <li><br/></li>
+                </ul>
+                </li>
+                </ul>
+                </li>
+                </ul>
+            """),
+            tags=[],
+            created=datetime.datetime(2024, 7, 21),
+        )
+        converter = Converter()
+        sink = FileSystemSink(
+            root=tmp_path,
+            note_path_template="{title}.md",
+        )
+        converter.export_note(note, sink=sink)
+
+        md = (tmp_path / "test.md").read_text()
+        md = md.partition("Operation modes")[-1]
+        expected = textwrap.dedent("""
+          * CSS + HTML files
+            * match selectors
+            * report unused
+          * CSS + source files
+            * extract ids and classes
+              * better: do grep on strings only
+            * resolve unused ids
+          * CSS files + HTML files + source files
+            * phase 1
+            * report selectors
+              * unused
+        """)
+        expected = textwrap.indent(expected, prefix="  ")
+        assert md == expected
+
+    def test_ol_list_handling(self, tmp_path):
+        note = ParsedNote(
+            title="test",
+            content=textwrap.dedent("""
+                <div><br/></div>
+                <ol>
+                <li><div>Apple</div></li>
+                <li><div>Banana</div></li>
+                <li><div><br/></div></li>
+                </ol>
+            """),
+            tags=[],
+            created=datetime.datetime(2024, 7, 21),
+        )
+        converter = Converter()
+        sink = FileSystemSink(
+            root=tmp_path,
+            note_path_template="{title}.md",
+        )
+        converter.export_note(note, sink=sink)
+
+        md = (tmp_path / "test.md").read_text()
+        expected = "\n  1. Apple\n  2. Banana\n"
+        assert expected in md

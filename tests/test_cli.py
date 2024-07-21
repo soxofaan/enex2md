@@ -55,7 +55,6 @@ class TestCli:
             "## Note Content\n"
             "\n"
             "Things to buy:\n"
-            "\n"
             "  * apple\n"
             "  * banana\n"
             "  * chocolate\n"
@@ -88,7 +87,6 @@ class TestCli:
             ## Note Content
 
             Things to buy:
-
               * apple
               * banana
               * chocolate

@@ -542,8 +542,10 @@ class Converter:
         return text
 
     def _handle_lists(self, text: str) -> str:
-        text = re.sub(r"<ul>", "<br /><ul>", text)
-        text = re.sub(r"<ol>", "<br /><ol>", text)
+        # Clean up some weird Evernote list constructs.
+        text = re.sub(r"<li>\s*<br/>\s*</li>", "", text)
+        text = re.sub(r'(<br/>)*</li>\s*<li style="list-style: none">\s*<ul>', "<ul>", text)
+        text = re.sub(r'(<br/>)*</li>\s*<li style="list-style: none">\s*<ol>', "<ol>", text)
         return text
 
     def _post_processor_code_newlines(self, text: str) -> str:
@@ -566,7 +568,7 @@ class Converter:
         text = "\n".join(new_lines)
 
         # Merge multiple empty lines to one.
-        text = re.sub(r"\n{3,}", "\n\n", text).strip()
+        text = re.sub(r"\n{3,}", "\n\n", text).rstrip()
 
         return text
 
