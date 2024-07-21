@@ -762,3 +762,28 @@ class TestConverter:
         md = (tmp_path / "test.md").read_text()
         expected = "\n  1. Apple\n  2. Banana\n"
         assert expected in md
+
+    def test_trailing_list_item(self, tmp_path):
+        note = ParsedNote(
+            title="test",
+            content=textwrap.dedent("""
+                <ul>
+                <li><div>Overtones</div></li>
+                <li><div>Chromatics</div></li>
+                <li><div><br/></div></li>
+                </ul>
+                <div>bye</div>
+            """),
+            tags=[],
+            created=datetime.datetime(2024, 7, 21),
+        )
+        converter = Converter()
+        sink = FileSystemSink(
+            root=tmp_path,
+            note_path_template="{title}.md",
+        )
+        converter.export_note(note, sink=sink)
+
+        md = (tmp_path / "test.md").read_text()
+        expected = "\n  * Overtones\n  * Chromatics\n\nbye\n"
+        assert md.endswith(expected)
