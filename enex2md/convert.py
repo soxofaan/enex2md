@@ -543,10 +543,10 @@ class Converter:
 
     def _handle_lists(self, text: str) -> str:
         # Clean up some weird Evernote list constructs.
-        text = re.sub(r"<li>\s*<br/>\s*</li>", "", text)
-        text = re.sub(r"<li>\s*<div>\s*<br/>\s*</div>\s*</li>", "", text)
-        text = re.sub(r'(<br/>)*</li>\s*<li style="list-style: none">\s*<ul>', "<ul>", text)
-        text = re.sub(r'(<br/>)*</li>\s*<li style="list-style: none">\s*<ol>', "<ol>", text)
+        text = re.sub(r"<li>\s*<br\s*/?>\s*</li>", "", text)
+        text = re.sub(r"<li>\s*<div>\s*<br\s*/?>\s*</div>\s*</li>", "", text)
+        text = re.sub(r'(<br\s*/?>)*</li>\s*<li style="list-style: none">\s*<ul>', "<ul>", text)
+        text = re.sub(r'(<br\s*/?>)*</li>\s*<li style="list-style: none">\s*<ol>', "<ol>", text)
         return text
 
     def _post_processor_code_newlines(self, text: str) -> str:

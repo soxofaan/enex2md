@@ -763,14 +763,15 @@ class TestConverter:
         expected = "\n  1. Apple\n  2. Banana\n"
         assert expected in md
 
-    def test_trailing_list_item(self, tmp_path):
+    @pytest.mark.parametrize("br", ["<br/>", "<br />"])
+    def test_trailing_list_item(self, tmp_path, br):
         note = ParsedNote(
             title="test",
-            content=textwrap.dedent("""
+            content=textwrap.dedent(f"""
                 <ul>
                 <li><div>Overtones</div></li>
                 <li><div>Chromatics</div></li>
-                <li><div><br/></div></li>
+                <li><div>{br}</div></li>
                 </ul>
                 <div>bye</div>
             """),
