@@ -48,6 +48,13 @@ class ParsedNote:
     def __repr__(self):
         return f"{type(self).__name__}({self.title!r})"
 
+    def enex_name(self, strip_numbering: bool = False) -> str:
+        name = self.source_enex.stem if self.source_enex else "untitled"
+        if strip_numbering:
+            # strip trailing enumeration suffixes ("-01", "-2022-1", etc)
+            name = re.fullmatch(r"^(.*?)(-[-0-9]*)?$", name).group(1)
+        return name
+
 
 class EnexParser:
     """Evernote Export (XML) file parser"""
@@ -281,13 +288,10 @@ class FileSystemSink(Sink):
         return safe[: self.max_filename_length]
 
     def _build_path(self, template: str, note: ParsedNote, handle_existing: bool = True) -> Path:
-        enex = self._safe_name(note.source_enex.stem) if note.source_enex else "enex"
-        # unnumbered: ENEX archive file name, but without trailing enumeration suffixes ("-01", "-2022-1", etc)
-        enex_unnumbered = re.fullmatch(r"^(.*?)(-[-0-9]*)?$", enex).group(1)
         path = self.root / template.format(
             now=as_timezone(self.now, timezone=self.timezone),
-            enex=enex,
-            enex_unnumbered=enex_unnumbered,
+            enex=self._safe_name(note.enex_name()),
+            enex_unnumbered=self._safe_name(note.enex_name(strip_numbering=True)),
             created=as_timezone(note.created, timezone=self.timezone),
             title=self._safe_name(note.title),
         )
@@ -567,6 +571,7 @@ class Converter:
     def _format_header(self, note: ParsedNote) -> Iterator[str]:
         metadata = {
             "title": note.title,
+            "origin": f"Evernote notebook {note.enex_name(strip_numbering=True)!r}",
         }
         if note.author:
             metadata["author"] = note.author
@@ -579,7 +584,15 @@ class Converter:
 
         tags = set(note.tags)
         if self.add_tags:
-            tags.update(self.add_tags)
+            tags.update(
+                self._safe_tag(
+                    t.format(
+                        enex=note.enex_name(),
+                        enex_unnumbered=note.enex_name(strip_numbering=True),
+                    )
+                )
+                for t in self.add_tags
+            )
         if tags:
             metadata["tags"] = repr(list(tags))
 
@@ -602,3 +615,9 @@ class Converter:
             yield ""
             yield "## Note Content"
             yield ""
+
+    def _safe_tag(self, tag: str, max_length: int = 64) -> str:
+        """Strip unsafe characters from a string to produce a filename-safe string"""
+        safe = re.sub("[^0-9a-zA-Z_-]+", "-", tag)
+        safe = safe.strip("-")
+        return safe[:max_length]
